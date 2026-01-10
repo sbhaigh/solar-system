@@ -44,17 +44,20 @@ solar-system-webgl/
 ## Usage
 
 ### Camera Controls
+
 - **Left-click + drag**: Rotate camera around focus point
 - **Right-click + drag**: Pan camera position
 - **Mouse wheel**: Zoom in/out
 - **Sliders**: Fine-tune camera angle, height, and zoom
 
 ### View Controls
+
 - **Focus Select**: Choose a planet to focus the camera on
 - **Show Orbits**: Toggle orbital path visibility
 - **Time Scale**: Adjust simulation speed (0.01 to 10 seconds per Earth day)
 
 ### Navigation Tips
+
 - Focus on outer planets (Jupiter, Saturn) to see their moon systems
 - Zoom in on Jupiter to see the Great Red Spot
 - Observe Saturn's rings with proper axial tilt
@@ -74,6 +77,7 @@ This project uses **ES6 modules** for clean code organization:
 - **utils/shaders.js**: GLSL vertex and fragment shaders with lighting and shadow support
 
 ### Rendering Features
+
 - **Phong-style lighting**: Directional lighting from the sun
 - **Moon shadows**: Earth casts shadow from its moon
 - **Surface mapping**: Great Red Spot properly oriented on Jupiter's surface using tangent vectors
