@@ -531,7 +531,7 @@ window.addEventListener("load", function () {
             (cameraY - y) * (cameraY - y) +
             (cameraZ - z) * (cameraZ - z)
         );
-        const showMoonLabels = distToPlanet < 50;
+        const showMoonLabels = distToPlanet < 100;
 
         planet.moons.forEach((moon, moonIndex) => {
           const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;

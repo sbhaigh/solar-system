@@ -40,7 +40,7 @@ export class Camera {
     document.getElementById("time-scale").addEventListener("input", (e) => {
       const sliderValue = parseFloat(e.target.value);
       const minSeconds = 0.01;
-      const maxSeconds = 10;
+      const maxSeconds = 30;
       const logMin = Math.log(minSeconds);
       const logMax = Math.log(maxSeconds);
       const secondsPerDay = Math.exp(
@@ -48,10 +48,38 @@ export class Camera {
       );
 
       this.timeScale = 62.83 / 365.25 / secondsPerDay;
+      const multiplier = 86400 / secondsPerDay;
       document.getElementById(
         "time-scale-label"
       ).textContent = `1 Earth day = ${secondsPerDay.toFixed(2)} sec`;
+      document.getElementById(
+        "time-multiplier-label"
+      ).textContent = `${multiplier.toFixed(0)}x (${(
+        86400 / secondsPerDay
+      ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
     });
+
+    // Initialize time scale label with default value
+    const initialSliderValue = parseFloat(
+      document.getElementById("time-scale").value
+    );
+    const minSeconds = 0.01;
+    const maxSeconds = 30;
+    const logMin = Math.log(minSeconds);
+    const logMax = Math.log(maxSeconds);
+    const initialSecondsPerDay = Math.exp(
+      logMax - (initialSliderValue / 100) * (logMax - logMin)
+    );
+    this.timeScale = 62.83 / 365.25 / initialSecondsPerDay;
+    const initialMultiplier = 86400 / initialSecondsPerDay;
+    document.getElementById(
+      "time-scale-label"
+    ).textContent = `1 Earth day = ${initialSecondsPerDay.toFixed(2)} sec`;
+    document.getElementById(
+      "time-multiplier-label"
+    ).textContent = `${initialMultiplier.toFixed(0)}x (${(
+      86400 / initialSecondsPerDay
+    ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
 
     // Mouse controls
     canvas.addEventListener("mousedown", (e) => {

@@ -207,6 +207,43 @@ export const config = {
       startAngle: 90,
       axialTilt: 97.77,
       inclination: 0.77,
+      moons: [
+        {
+          name: "Miranda",
+          radius: 0.15,
+          color: [0.7, 0.7, 0.7],
+          orbitRadius: 8,
+          orbitSpeed: 805,
+        },
+        {
+          name: "Ariel",
+          radius: 0.35,
+          color: [0.85, 0.85, 0.85],
+          orbitRadius: 12,
+          orbitSpeed: 371,
+        },
+        {
+          name: "Umbriel",
+          radius: 0.35,
+          color: [0.4, 0.4, 0.4],
+          orbitRadius: 17,
+          orbitSpeed: 242,
+        },
+        {
+          name: "Titania",
+          radius: 0.48,
+          color: [0.75, 0.75, 0.75],
+          orbitRadius: 27,
+          orbitSpeed: 115,
+        },
+        {
+          name: "Oberon",
+          radius: 0.46,
+          color: [0.65, 0.65, 0.65],
+          orbitRadius: 37,
+          orbitSpeed: 81,
+        },
+      ],
     },
     {
       name: "Neptune",

@@ -20,26 +20,39 @@ A realistic WebGL simulation of the solar system featuring all 8 planets with ac
 ## Project Structure
 
 ```
-solar-system-webgl/
-├── src/
-│   ├── index.html          # Main HTML document with UI controls
-│   ├── config.js           # Solar system configuration (planets, moons, belts)
-│   ├── main.js             # Application entry point and render loop
-│   ├── camera.js           # Camera class with controls
-│   ├── renderer.js         # Rendering functions (spheres, rings, orbits)
-│   ├── geometry.js         # WebGL geometry creation (spheres, rings, paths)
+solar-system/
+├── index.html          # Main HTML document with UI controls
+├── css/
+│   └── styles.css      # Application styles
+├── js/
+│   ├── config.js       # Solar system configuration (planets, moons, belts)
+│   ├── main.js         # Application entry point and render loop
+│   ├── camera.js       # Camera class with controls
+│   ├── renderer.js     # Rendering functions (spheres, rings, orbits)
+│   ├── geometry.js     # WebGL geometry creation (spheres, rings, paths)
 │   └── utils/
-│       ├── math.js         # Matrix mathematics (mat4 library)
-│       └── shaders.js      # WebGL shader programs
+│       ├── math.js     # Matrix mathematics (mat4 library)
+│       └── shaders.js  # WebGL shader programs
 └── README.md
 ```
 
 ## Setup Instructions
 
-1. Clone the repository to your local machine.
-2. Navigate to `solar-system-webgl/src/`
-3. Open `index.html` in a modern web browser that supports WebGL
-4. No build process or dependencies required - just open and run!
+1. Clone the repository to your local machine
+2. Navigate to the project directory: `cd solar-system`
+3. Start a local web server (required for ES6 modules):
+
+   ```bash
+   # Using Node.js
+   npx http-server -p 8000
+
+   # Or using Python
+   python3 -m http.server 8000
+   ```
+
+4. Open your browser to `http://localhost:8000`
+
+**Note**: ES6 modules require a web server - you cannot open `index.html` directly using the `file://` protocol.
 
 ## Usage
 
@@ -54,7 +67,7 @@ solar-system-webgl/
 
 - **Focus Select**: Choose a planet to focus the camera on
 - **Show Orbits**: Toggle orbital path visibility
-- **Time Scale**: Adjust simulation speed (0.01 to 10 seconds per Earth day)
+- **Time Scale**: Adjust simulation speed (0.01 to 30 seconds per Earth day)
 
 ### Navigation Tips
 
@@ -68,13 +81,14 @@ solar-system-webgl/
 
 This project uses **ES6 modules** for clean code organization:
 
-- **config.js**: Complete solar system data including orbital parameters, physical properties, and visual features
-- **main.js**: WebGL initialization, buffer creation, animation loop, and planetary feature rendering (Great Red Spot)
-- **camera.js**: Camera state management and user input handling
-- **renderer.js**: Specialized rendering functions for different object types
-- **geometry.js**: Procedural geometry generation (spheres with 32×32 tessellation, rings, orbital paths)
-- **utils/math.js**: 4×4 matrix operations for 3D transformations
-- **utils/shaders.js**: GLSL vertex and fragment shaders with lighting and shadow support
+- **css/styles.css**: Application styling and UI components
+- **js/config.js**: Complete solar system data including orbital parameters, physical properties, and visual features
+- **js/main.js**: WebGL initialization, buffer creation, animation loop, and planetary feature rendering (Great Red Spot)
+- **js/camera.js**: Camera state management and user input handling
+- **js/renderer.js**: Specialized rendering functions for different object types
+- **js/geometry.js**: Procedural geometry generation (spheres with 32×32 tessellation, rings, orbital paths)
+- **js/utils/math.js**: 4×4 matrix operations for 3D transformations
+- **js/utils/shaders.js**: GLSL vertex and fragment shaders with lighting and shadow support
 
 ### Rendering Features
 
