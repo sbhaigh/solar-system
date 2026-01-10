@@ -1,0 +1,110 @@
+// Camera state and controls
+
+export class Camera {
+  constructor() {
+    this.zoom = 800;
+    this.angle = 0;
+    this.height = 20;
+    this.panX = 0;
+    this.panY = 0;
+    this.panZ = 0;
+    this.focusTarget = -1;
+    this.showOrbits = true;
+    this.timeScale = 1.0;
+  }
+
+  setupControls(canvas) {
+    const mouseState = { isDragging: false, lastX: 0, lastY: 0, button: -1 };
+
+    // UI Controls
+    document.getElementById("zoom").addEventListener("input", (e) => {
+      this.zoom = parseFloat(e.target.value);
+    });
+
+    document.getElementById("camera-angle").addEventListener("input", (e) => {
+      this.angle = parseFloat(e.target.value);
+    });
+
+    document.getElementById("camera-height").addEventListener("input", (e) => {
+      this.height = parseFloat(e.target.value);
+    });
+
+    document.getElementById("focus-select").addEventListener("change", (e) => {
+      this.focusTarget = parseInt(e.target.value);
+    });
+
+    document.getElementById("show-orbits").addEventListener("change", (e) => {
+      this.showOrbits = e.target.checked;
+    });
+
+    document.getElementById("time-scale").addEventListener("input", (e) => {
+      const sliderValue = parseFloat(e.target.value);
+      const minSeconds = 0.01;
+      const maxSeconds = 10;
+      const logMin = Math.log(minSeconds);
+      const logMax = Math.log(maxSeconds);
+      const secondsPerDay = Math.exp(
+        logMax - (sliderValue / 100) * (logMax - logMin)
+      );
+
+      this.timeScale = 62.83 / 365.25 / secondsPerDay;
+      document.getElementById(
+        "time-scale-label"
+      ).textContent = `1 Earth day = ${secondsPerDay.toFixed(2)} sec`;
+    });
+
+    // Mouse controls
+    canvas.addEventListener("mousedown", (e) => {
+      if (e.button === 0 || e.button === 2) {
+        e.preventDefault();
+        mouseState.isDragging = true;
+        mouseState.button = e.button;
+        mouseState.lastX = e.clientX;
+        mouseState.lastY = e.clientY;
+      }
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (mouseState.isDragging) {
+        const deltaX = e.clientX - mouseState.lastX;
+        const deltaY = e.clientY - mouseState.lastY;
+
+        if (mouseState.button === 0) {
+          const rotateSpeed = 0.5;
+          this.angle += deltaX * rotateSpeed;
+          this.height -= deltaY * rotateSpeed;
+          this.height = Math.max(-90, Math.min(90, this.height));
+
+          document.getElementById("camera-angle").value = this.angle % 360;
+          document.getElementById("camera-height").value = this.height;
+        } else if (mouseState.button === 2) {
+          const panSpeed = 0.1;
+          this.panX += deltaX * panSpeed;
+          this.panZ += deltaY * panSpeed;
+        }
+
+        mouseState.lastX = e.clientX;
+        mouseState.lastY = e.clientY;
+      }
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+      if (e.button === mouseState.button) {
+        mouseState.isDragging = false;
+        mouseState.button = -1;
+      }
+    });
+
+    canvas.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const zoomSpeed = 0.1;
+      this.zoom += e.deltaY * zoomSpeed;
+      this.zoom = Math.max(1, Math.min(3000, this.zoom));
+      document.getElementById("zoom").value = this.zoom;
+    });
+  }
+}

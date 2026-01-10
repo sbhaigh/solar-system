@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar System</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      #webgl-canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 20px;
+        border-radius: 8px;
+        color: white;
+      }
+
+      .control-group {
+        margin-bottom: 15px;
+      }
+
+      .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 14px;
+      }
+
+      .control-group input[type="range"] {
+        width: 200px;
+      }
+
+      #instructions {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        font-size: 12px;
+      }
+
+      .planet-label {
+        position: absolute;
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px black;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="controls">
+      <div class="control-group">
+        <label>Zoom</label>
+        <input type="range" id="zoom" min="1" max="3000" value="800" />
+      </div>
+      <div class="control-group">
+        <label>Camera Angle</label>
+        <input type="range" id="camera-angle" min="0" max="360" value="0" />
+      </div>
+      <div class="control-group">
+        <label>Camera Height</label>
+        <input type="range" id="camera-height" min="-90" max="90" value="20" />
+      </div>
+      <div class="control-group">
+        <label>Focus On</label>
+        <select id="focus-select">
+          <option value="-1">Sun (Center)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="show-orbits" checked />
+          Show Orbit Lines
+        </label>
+      </div>
+      <div class="control-group">
+        <label>Orbit Speed</label>
+        <input
+          type="range"
+          id="time-scale"
+          min="0"
+          max="100"
+          value="50"
+          step="1"
+        />
+        <div
+          id="time-scale-label"
+          style="font-size: 11px; margin-top: 5px; color: #ccc"
+        >
+          1 Earth day = 0.05 sec
+        </div>
+      </div>
+    </div>
+
+    <div id="instructions">
+      <strong>Controls:</strong><br />
+      • Left-click + drag to rotate camera<br />
+      • Right-click + drag to pan<br />
+      • Mouse wheel to zoom<br />
+      • Use sliders to adjust camera<br />
+      • Select planet to focus on
+    </div>
+
+    <div id="labels-container"></div>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
