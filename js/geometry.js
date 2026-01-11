@@ -3,6 +3,7 @@
 export function createSphere(gl, radius, latitudeBands, longitudeBands) {
   const positions = [],
     normals = [],
+    texCoords = [],
     indices = [];
 
   for (let lat = 0; lat <= latitudeBands; lat++) {
@@ -20,6 +21,7 @@ export function createSphere(gl, radius, latitudeBands, longitudeBands) {
 
       positions.push(radius * x, radius * y, radius * z);
       normals.push(x, y, z);
+      texCoords.push(1.0 - lon / longitudeBands, lat / latitudeBands);
     }
   }
 
@@ -39,6 +41,10 @@ export function createSphere(gl, radius, latitudeBands, longitudeBands) {
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 
+  const texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(
@@ -50,6 +56,7 @@ export function createSphere(gl, radius, latitudeBands, longitudeBands) {
   return {
     position: positionBuffer,
     normal: normalBuffer,
+    texCoord: texCoordBuffer,
     indices: indexBuffer,
     indexCount: indices.length,
   };
@@ -58,6 +65,7 @@ export function createSphere(gl, radius, latitudeBands, longitudeBands) {
 export function createRing(gl, innerRadius, outerRadius, segments) {
   const positions = [],
     normals = [],
+    texCoords = [],
     indices = [];
 
   for (let i = 0; i <= segments; i++) {
@@ -67,8 +75,11 @@ export function createRing(gl, innerRadius, outerRadius, segments) {
 
     positions.push(innerRadius * cos, 0, innerRadius * sin);
     normals.push(0, 1, 0);
+    texCoords.push(0, 0.5); // Inner edge at texture coordinate 0
+
     positions.push(outerRadius * cos, 0, outerRadius * sin);
     normals.push(0, 1, 0);
+    texCoords.push(1, 0.5); // Outer edge at texture coordinate 1
   }
 
   for (let i = 0; i < segments; i++) {
@@ -85,6 +96,10 @@ export function createRing(gl, innerRadius, outerRadius, segments) {
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 
+  const texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(
@@ -96,6 +111,7 @@ export function createRing(gl, innerRadius, outerRadius, segments) {
   return {
     position: positionBuffer,
     normal: normalBuffer,
+    texCoord: texCoordBuffer,
     indices: indexBuffer,
     indexCount: indices.length,
   };

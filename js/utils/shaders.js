@@ -3,15 +3,18 @@
 export const vertexShaderSource = `
     attribute vec3 aPosition;
     attribute vec3 aNormal;
+    attribute vec2 aTexCoord;
     uniform mat4 uModelMatrix;
     uniform mat4 uViewMatrix;
     uniform mat4 uProjectionMatrix;
     varying vec3 vNormal;
     varying vec3 vPosition;
+    varying vec2 vTexCoord;
     void main() {
         vec4 worldPosition = uModelMatrix * vec4(aPosition, 1.0);
         vPosition = worldPosition.xyz;
         vNormal = mat3(uModelMatrix) * aNormal;
+        vTexCoord = aTexCoord;
         gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
     }
 `;
@@ -24,11 +27,19 @@ export const fragmentShaderSource = `
     uniform vec3 uMoonPosition;
     uniform float uMoonRadius;
     uniform bool uCheckShadow;
+    uniform bool uUseTexture;
+    uniform sampler2D uTexture;
     varying vec3 vNormal;
     varying vec3 vPosition;
+    varying vec2 vTexCoord;
     void main() {
+        vec3 baseColor = uColor;
+        if (uUseTexture) {
+            baseColor = texture2D(uTexture, vTexCoord).rgb;
+        }
+        
         if (uEmissive) {
-            gl_FragColor = vec4(uColor, 1.0);
+            gl_FragColor = vec4(baseColor, 1.0);
         } else {
             vec3 normal = normalize(vNormal);
             vec3 lightDir = normalize(uLightPosition - vPosition);
@@ -55,7 +66,7 @@ export const fragmentShaderSource = `
             
             float ambient = 0.1;
             float lighting = max(diff * shadow, ambient);
-            vec3 color = uColor * lighting;
+            vec3 color = baseColor * lighting;
             gl_FragColor = vec4(color, 1.0);
         }
     }

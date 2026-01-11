@@ -16,6 +16,7 @@ import {
   renderSphere,
   project3DTo2D,
 } from "./renderer.js";
+import { loadTextures } from "./utils/textures.js";
 
 // Initialize WebGL and start application
 window.addEventListener("load", function () {
@@ -26,6 +27,9 @@ window.addEventListener("load", function () {
     alert("WebGL not supported");
     return;
   }
+
+  // Load textures
+  const textures = loadTextures(gl, config);
 
   // Setup canvas and WebGL
   canvas.width = window.innerWidth;
@@ -293,6 +297,7 @@ window.addEventListener("load", function () {
     }
 
     // Render Sun
+    const sunRotationAngle = accumulatedTime * config.sun.rotationSpeed;
     renderSphere(
       gl,
       shaderProgram,
@@ -301,8 +306,9 @@ window.addEventListener("load", function () {
       [0, 0, 0],
       null,
       null,
-      undefined,
-      undefined
+      config.sun.axialTilt,
+      sunRotationAngle,
+      textures.sun
     );
 
     // Render planets
@@ -378,6 +384,7 @@ window.addEventListener("load", function () {
       const rotationAngle = planet.rotationSpeed
         ? accumulatedTime * planet.rotationSpeed
         : 0;
+      const planetTexture = textures[planet.name] || null;
       renderSphere(
         gl,
         shaderProgram,
@@ -387,7 +394,8 @@ window.addEventListener("load", function () {
         moonPosition,
         moonRadius,
         planet.axialTilt,
-        rotationAngle
+        rotationAngle,
+        planetTexture
       );
 
       // Render planetary spot (Great Red Spot)
@@ -572,6 +580,7 @@ window.addEventListener("load", function () {
             moonLabel.style.display = "none";
           }
 
+          const moonTexture = textures[moon.name] || null;
           renderSphere(
             gl,
             shaderProgram,
@@ -581,13 +590,16 @@ window.addEventListener("load", function () {
             null,
             null,
             undefined,
-            undefined
+            undefined,
+            moonTexture
           );
         });
       }
 
       // Render rings
       if (planet.hasRings && planet.rings) {
+        const ringTexture =
+          planet.name === "Saturn" ? textures.saturnRing : null;
         planet.rings.forEach((ring) => {
           renderRing(
             gl,
@@ -595,7 +607,8 @@ window.addEventListener("load", function () {
             ring,
             [x, y, z],
             planet.axialTilt,
-            angle
+            angle,
+            ringTexture
           );
         });
       }

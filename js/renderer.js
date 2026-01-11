@@ -59,7 +59,8 @@ export function renderRing(
   ring,
   position,
   axialTilt,
-  orbitalAngle
+  orbitalAngle,
+  texture
 ) {
   const modelMatrix = mat4.create();
   modelMatrix[12] = position[0];
@@ -112,6 +113,26 @@ export function renderRing(
   gl.enableVertexAttribArray(normalLoc);
   gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
 
+  // Texture support
+  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
+  if (texCoordLoc !== -1) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, ringBuffer.texCoord);
+    gl.enableVertexAttribArray(texCoordLoc);
+    gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+  }
+
+  const useTextureLoc = gl.getUniformLocation(shaderProgram, "uUseTexture");
+  const textureLoc = gl.getUniformLocation(shaderProgram, "uTexture");
+
+  if (texture) {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(textureLoc, 0);
+    gl.uniform1i(useTextureLoc, 1);
+  } else {
+    gl.uniform1i(useTextureLoc, 0);
+  }
+
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ringBuffer.indices);
   gl.drawElements(gl.TRIANGLES, ringBuffer.indexCount, gl.UNSIGNED_SHORT, 0);
 }
@@ -125,7 +146,8 @@ export function renderSphere(
   moonPos,
   moonRadius,
   axialTilt,
-  rotationAngle
+  rotationAngle,
+  texture
 ) {
   const modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, position);
@@ -186,6 +208,17 @@ export function renderSphere(
     gl.uniform1i(checkShadowLoc, false);
   }
 
+  // Texture support
+  const useTextureLoc = gl.getUniformLocation(shaderProgram, "uUseTexture");
+  if (texture) {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uTexture"), 0);
+    gl.uniform1i(useTextureLoc, true);
+  } else {
+    gl.uniform1i(useTextureLoc, false);
+  }
+
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
   const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
   gl.enableVertexAttribArray(positionLoc);
@@ -195,6 +228,11 @@ export function renderSphere(
   const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
   gl.enableVertexAttribArray(normalLoc);
   gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.texCoord);
+  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
+  gl.enableVertexAttribArray(texCoordLoc);
+  gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
   gl.drawElements(gl.TRIANGLES, sphereBuffers.indexCount, gl.UNSIGNED_SHORT, 0);
