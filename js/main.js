@@ -509,9 +509,10 @@ window.addEventListener("load", function () {
       const cloudTexture =
         planet.name === "Earth" ? textures.earthClouds : null;
       // Clouds rotate slightly faster than Earth (about 1.2x speed)
-      const cloudRotation = planet.name === "Earth" 
-        ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
-        : 0;
+      const cloudRotation =
+        planet.name === "Earth"
+          ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
+          : 0;
       renderSphere(
         gl,
         shaderProgram,

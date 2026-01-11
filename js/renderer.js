@@ -233,8 +233,11 @@ export function renderSphere(
 
   // Cloud texture support (for Earth)
   const useCloudsLoc = gl.getUniformLocation(shaderProgram, "uUseClouds");
-  const cloudRotationLoc = gl.getUniformLocation(shaderProgram, "uCloudRotation");
-  
+  const cloudRotationLoc = gl.getUniformLocation(
+    shaderProgram,
+    "uCloudRotation"
+  );
+
   if (cloudTexture && object.name === "Earth") {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, cloudTexture);
