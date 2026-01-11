@@ -326,7 +326,12 @@
         const url = `index.html${
           params.toString() ? "?" + params.toString() : ""
         }`;
-        iframe.src = url;
+        
+        // Force iframe reload by setting src to empty first
+        iframe.src = "about:blank";
+        setTimeout(() => {
+          iframe.src = url;
+        }, 10);
         
         // Update URLs with full domain
         const fullUrl = `https://www.stevehaigh.net/solar-system/${url}`;
