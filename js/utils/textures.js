@@ -72,6 +72,9 @@ export function loadTextures(gl, config) {
   // Load Earth normal map
   textures.earthNormal = loadTexture(gl, "textures/2k_earth_normal_map.tif");
 
+  // Load Earth night map
+  textures.earthNight = loadTexture(gl, "textures/2k_earth_nightmap-2.jpg");
+
   config.planets.forEach((planet) => {
     if (planet.texture) {
       textures[planet.name] = loadTexture(gl, planet.texture);

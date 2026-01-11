@@ -155,6 +155,7 @@ export function renderSphere(
   cloudRotation,
   specularTexture,
   normalTexture,
+  nightTexture,
   planetPos,
   planetRadius
 ) {
@@ -289,6 +290,17 @@ export function renderSphere(
     gl.uniform1i(useNormalLoc, 1);
   } else {
     gl.uniform1i(useNormalLoc, 0);
+  }
+
+  // Night map support (for Earth)
+  const useNightLoc = gl.getUniformLocation(shaderProgram, "uUseNight");
+  if (nightTexture && object.name === "Earth") {
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, nightTexture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uNightMap"), 4);
+    gl.uniform1i(useNightLoc, 1);
+  } else {
+    gl.uniform1i(useNightLoc, 0);
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);

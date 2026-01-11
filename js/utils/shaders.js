@@ -37,6 +37,8 @@ export const fragmentShaderSource = `
     uniform sampler2D uSpecularMap;
     uniform bool uUseNormal;
     uniform sampler2D uNormalMap;
+    uniform bool uUseNight;
+    uniform sampler2D uNightMap;
     uniform vec3 uPlanetPosition;
     uniform float uPlanetRadius;
     uniform bool uCheckPlanetShadow;
@@ -47,6 +49,12 @@ export const fragmentShaderSource = `
         vec3 baseColor = uColor;
         if (uUseTexture) {
             baseColor = texture2D(uTexture, vTexCoord).rgb;
+        }
+        
+        // Blend in night map on dark side
+        vec3 nightColor = baseColor;
+        if (uUseNight) {
+            nightColor = texture2D(uNightMap, vTexCoord).rgb;
         }
         
         if (uEmissive) {
@@ -127,7 +135,15 @@ export const fragmentShaderSource = `
             
             float ambient = 0.1;
             float lighting = max(diff * shadow * terminator, ambient * terminator);
-            vec3 color = baseColor * lighting;
+            
+            // Blend between day and night textures based on lighting
+            vec3 dayColor = baseColor * lighting;
+            vec3 color = dayColor;
+            if (uUseNight) {
+                // Smooth transition from night to day
+                float nightBlend = 1.0 - smoothstep(-0.1, 0.3, diff);
+                color = mix(dayColor, nightColor, nightBlend * (1.0 - terminator * 0.5));
+            }
             
             // Add specular highlights if enabled
             if (uUseSpecular) {

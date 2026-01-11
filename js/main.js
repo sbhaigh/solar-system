@@ -431,6 +431,7 @@ window.addEventListener("load", function () {
       0, // No cloud rotation
       null, // No specular map for Sun
       null, // No normal map for Sun
+      null, // No night map for Sun
       null, // No planet shadow for Sun
       null // No planet radius for Sun
     );
@@ -547,6 +548,7 @@ window.addEventListener("load", function () {
         planet.name === "Earth" ? textures.earthSpecular : null;
       const normalTexture =
         planet.name === "Earth" ? textures.earthNormal : null;
+      const nightTexture = planet.name === "Earth" ? textures.earthNight : null;
       renderSphere(
         gl,
         shaderProgram,
@@ -562,6 +564,7 @@ window.addEventListener("load", function () {
         cloudRotation,
         specularTexture,
         normalTexture,
+        nightTexture,
         null, // No planet shadow for planets
         null // No planet radius for planets
       );
@@ -788,6 +791,7 @@ window.addEventListener("load", function () {
             0, // No cloud rotation
             null, // No specular map for moons
             null, // No normal map for moons
+            null, // No night map for moons
             [x, y, z], // Planet position for shadow casting (lunar eclipse)
             planet.radius // Planet radius for shadow
           );
