@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Steve Haigh" />
+    <meta
+      name="description"
+      content="Embeddable WebGL solar system simulation"
+    />
+    <title>Solar System - Embed</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      /* Embed-specific styles */
+      #controls {
+        display: none; /* Hidden by default for embed */
+      }
+
+      #instructions {
+        display: none; /* Hidden by default for embed */
+      }
+
+      /* Show controls if enabled via URL parameter */
+      body.show-controls #controls {
+        display: block;
+      }
+
+      body.show-instructions #instructions {
+        display: block;
+      }
+
+      /* Compact controls for embed */
+      body.show-controls #controls {
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        font-size: 12px;
+      }
+
+      body.show-controls .control-group {
+        margin-bottom: 8px;
+      }
+
+      body.show-controls .control-group input[type="range"] {
+        width: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="controls">
+      <div class="control-group">
+        <label>Zoom</label>
+        <input type="range" id="zoom" min="1" max="3000" value="800" />
+      </div>
+      <div class="control-group">
+        <label>Camera Angle</label>
+        <input type="range" id="camera-angle" min="0" max="360" value="0" />
+      </div>
+      <div class="control-group">
+        <label>Camera Height</label>
+        <input type="range" id="camera-height" min="-90" max="90" value="20" />
+      </div>
+      <div class="control-group">
+        <label>Focus On</label>
+        <select id="focus-select">
+          <option value="-1">Sun (Center)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="show-orbits" checked />
+          Show Orbit Lines
+        </label>
+      </div>
+      <div class="control-group">
+        <label>Orbit Speed</label>
+        <input
+          type="range"
+          id="time-scale"
+          min="0"
+          max="100"
+          value="50"
+          step="1"
+        />
+        <div
+          id="time-scale-label"
+          style="font-size: 11px; margin-top: 5px; color: #ccc"
+        >
+          1 Earth day = 0.05 sec
+        </div>
+        <div
+          id="time-multiplier-label"
+          style="font-size: 11px; margin-top: 2px; color: #aaa"
+        >
+          Speed: 1x
+        </div>
+      </div>
+    </div>
+
+    <div id="instructions">
+      <strong>Controls:</strong><br />
+      • Left-click + drag to rotate camera<br />
+      • Right-click + drag to pan<br />
+      • Mouse wheel to zoom
+    </div>
+
+    <div id="labels-container"></div>
+
+    <script type="module" src="js/embed-init.js"></script>
+  </body>
+</html>
