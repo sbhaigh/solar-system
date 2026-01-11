@@ -490,7 +490,8 @@ window.addEventListener("load", function () {
         const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
 
         let moonX, moonY, moonZ;
-        if (moon.orbitalTilt) {
+        if (moon.orbitalTilt !== undefined) {
+          // Moon has specific orbital tilt (e.g., Earth's Moon)
           const tiltRad = (moon.orbitalTilt * Math.PI) / 180;
           const baseX = moon.orbitRadius * Math.cos(moonAngle);
           const baseY =
@@ -500,7 +501,24 @@ window.addEventListener("load", function () {
           moonX = x + baseX;
           moonY = y + baseY;
           moonZ = z + baseZ;
+        } else if (planet.axialTilt !== undefined) {
+          // Align moon orbit with planet's equatorial plane
+          // Orbital plane is tilted but doesn't rotate with planet spin
+          const tiltRad = (planet.axialTilt * Math.PI) / 180;
+          const cosTilt = Math.cos(tiltRad);
+          const sinTilt = Math.sin(tiltRad);
+
+          // Calculate position in orbital plane
+          const localX = moon.orbitRadius * Math.cos(moonAngle);
+          const localY = 0;
+          const localZ = moon.orbitRadius * Math.sin(moonAngle);
+
+          // Apply only axial tilt (not planet rotation)
+          moonX = x + localX;
+          moonY = y + localY * cosTilt - localZ * sinTilt;
+          moonZ = z + localY * sinTilt + localZ * cosTilt;
         } else {
+          // Default: orbit in horizontal plane
           moonX = x + moon.orbitRadius * Math.cos(moonAngle);
           moonY = y;
           moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
@@ -696,16 +714,17 @@ window.addEventListener("load", function () {
             moonZ = z + baseZ;
           } else if (planet.axialTilt !== undefined) {
             // Align moon orbit with planet's equatorial plane
+            // Orbital plane is tilted but doesn't rotate with planet spin
             const tiltRad = (planet.axialTilt * Math.PI) / 180;
             const cosTilt = Math.cos(tiltRad);
             const sinTilt = Math.sin(tiltRad);
 
-            // Calculate position in equatorial plane
+            // Calculate position in orbital plane
             const localX = moon.orbitRadius * Math.cos(moonAngle);
             const localY = 0;
             const localZ = moon.orbitRadius * Math.sin(moonAngle);
 
-            // Apply axial tilt rotation
+            // Apply only axial tilt (not planet rotation)
             moonX = x + localX;
             moonY = y + localY * cosTilt - localZ * sinTilt;
             moonZ = z + localY * sinTilt + localZ * cosTilt;
