@@ -30,7 +30,13 @@ export class Camera {
     });
 
     document.getElementById("focus-select").addEventListener("change", (e) => {
-      this.focusTarget = parseInt(e.target.value);
+      const newFocus = parseInt(e.target.value);
+      // Trigger camera transition callback if it exists
+      if (this.onFocusChange) {
+        this.onFocusChange(newFocus);
+      } else {
+        this.focusTarget = newFocus;
+      }
     });
 
     document.getElementById("show-orbits").addEventListener("change", (e) => {

@@ -142,6 +142,34 @@ window.addEventListener("load", function () {
     duration: 1.5, // seconds
   };
 
+  // Function to start camera transition to a planet
+  function transitionToPlanet(planetIndex) {
+    // Calculate appropriate zoom based on object size
+    let targetRadius;
+    if (planetIndex === -1) {
+      // Sun
+      targetRadius = config.sun.radius;
+    } else {
+      // Planet
+      targetRadius = config.planets[planetIndex].radius;
+    }
+
+    // Set zoom to make the object nicely visible (about 1/4 of screen height)
+    const targetZoom = targetRadius * 8;
+    const clampedZoom = Math.max(10, Math.min(3000, targetZoom));
+
+    // Start smooth transition
+    cameraTransition.active = true;
+    cameraTransition.startZoom = camera.zoom;
+    cameraTransition.targetZoom = clampedZoom;
+    cameraTransition.startFocus = camera.focusTarget;
+    cameraTransition.targetFocus = planetIndex;
+    cameraTransition.progress = 0;
+  }
+
+  // Set up dropdown focus change callback
+  camera.onFocusChange = transitionToPlanet;
+
   // Click handler for selecting planets
   canvas.addEventListener("click", (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -179,27 +207,7 @@ window.addEventListener("load", function () {
     }
 
     if (closestDistance < Infinity) {
-      // Calculate appropriate zoom based on object size
-      let targetRadius;
-      if (closestPlanet === -1) {
-        // Sun
-        targetRadius = config.sun.radius;
-      } else {
-        // Planet
-        targetRadius = config.planets[closestPlanet].radius;
-      }
-
-      // Set zoom to make the object nicely visible (about 1/4 of screen height)
-      const targetZoom = targetRadius * 8;
-      const clampedZoom = Math.max(10, Math.min(3000, targetZoom));
-
-      // Start smooth transition
-      cameraTransition.active = true;
-      cameraTransition.startZoom = camera.zoom;
-      cameraTransition.targetZoom = clampedZoom;
-      cameraTransition.startFocus = camera.focusTarget;
-      cameraTransition.targetFocus = closestPlanet;
-      cameraTransition.progress = 0;
+      transitionToPlanet(closestPlanet);
     }
   });
 
