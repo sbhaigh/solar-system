@@ -16,76 +16,100 @@ export class Camera {
   setupControls(canvas) {
     const mouseState = { isDragging: false, lastX: 0, lastY: 0, button: -1 };
 
-    // UI Controls
-    document.getElementById("zoom").addEventListener("input", (e) => {
-      this.zoom = parseFloat(e.target.value);
-    });
+    // UI Controls - only set up if elements exist (v2.0)
+    const zoomEl = document.getElementById("zoom");
+    if (zoomEl) {
+      zoomEl.addEventListener("input", (e) => {
+        this.zoom = parseFloat(e.target.value);
+      });
+    }
 
-    document.getElementById("camera-angle").addEventListener("input", (e) => {
-      this.angle = parseFloat(e.target.value);
-    });
+    const angleEl = document.getElementById("camera-angle");
+    if (angleEl) {
+      angleEl.addEventListener("input", (e) => {
+        this.angle = parseFloat(e.target.value);
+      });
+    }
 
-    document.getElementById("camera-height").addEventListener("input", (e) => {
-      this.height = parseFloat(e.target.value);
-    });
+    const heightEl = document.getElementById("camera-height");
+    if (heightEl) {
+      heightEl.addEventListener("input", (e) => {
+        this.height = parseFloat(e.target.value);
+      });
+    }
 
-    document.getElementById("focus-select").addEventListener("change", (e) => {
-      const newFocus = parseInt(e.target.value);
-      // Trigger camera transition callback if it exists
-      if (this.onFocusChange) {
-        this.onFocusChange(newFocus);
-      } else {
-        this.focusTarget = newFocus;
-      }
-    });
+    const focusEl = document.getElementById("focus-select");
+    if (focusEl) {
+      focusEl.addEventListener("change", (e) => {
+        const newFocus = parseInt(e.target.value);
+        // Trigger camera transition callback if it exists
+        if (this.onFocusChange) {
+          this.onFocusChange(newFocus);
+        } else {
+          this.focusTarget = newFocus;
+        }
+      });
+    }
 
-    document.getElementById("show-orbits").addEventListener("change", (e) => {
-      this.showOrbits = e.target.checked;
-    });
+    const orbitsEl = document.getElementById("show-orbits");
+    if (orbitsEl) {
+      orbitsEl.addEventListener("change", (e) => {
+        this.showOrbits = e.target.checked;
+      });
+    }
 
-    document.getElementById("time-scale").addEventListener("input", (e) => {
-      const sliderValue = parseFloat(e.target.value);
+    const timeScaleEl = document.getElementById("time-scale");
+    if (timeScaleEl) {
+      timeScaleEl.addEventListener("input", (e) => {
+        const sliderValue = parseFloat(e.target.value);
+        const minSeconds = 0.01;
+        const maxSeconds = 30;
+        const logMin = Math.log(minSeconds);
+        const logMax = Math.log(maxSeconds);
+        const secondsPerDay = Math.exp(
+          logMax - (sliderValue / 100) * (logMax - logMin)
+        );
+
+        this.timeScale = 62.83 / 365.25 / secondsPerDay;
+        const multiplier = 86400 / secondsPerDay;
+        const labelEl = document.getElementById("time-scale-label");
+        const multiplierEl = document.getElementById("time-multiplier-label");
+        if (labelEl) {
+          labelEl.textContent = `1 Earth day = ${secondsPerDay.toFixed(2)} sec`;
+        }
+        if (multiplierEl) {
+          multiplierEl.textContent = `${multiplier.toFixed(0)}x (${(
+            86400 / secondsPerDay
+          ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
+        }
+      });
+    }
+
+    // Initialize time scale label with default value
+    if (timeScaleEl) {
+      const initialSliderValue = parseFloat(timeScaleEl.value);
       const minSeconds = 0.01;
       const maxSeconds = 30;
       const logMin = Math.log(minSeconds);
       const logMax = Math.log(maxSeconds);
-      const secondsPerDay = Math.exp(
-        logMax - (sliderValue / 100) * (logMax - logMin)
+      const initialSecondsPerDay = Math.exp(
+        logMax - (initialSliderValue / 100) * (logMax - logMin)
       );
-
-      this.timeScale = 62.83 / 365.25 / secondsPerDay;
-      const multiplier = 86400 / secondsPerDay;
-      document.getElementById(
-        "time-scale-label"
-      ).textContent = `1 Earth day = ${secondsPerDay.toFixed(2)} sec`;
-      document.getElementById(
-        "time-multiplier-label"
-      ).textContent = `${multiplier.toFixed(0)}x (${(
-        86400 / secondsPerDay
-      ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
-    });
-
-    // Initialize time scale label with default value
-    const initialSliderValue = parseFloat(
-      document.getElementById("time-scale").value
-    );
-    const minSeconds = 0.01;
-    const maxSeconds = 30;
-    const logMin = Math.log(minSeconds);
-    const logMax = Math.log(maxSeconds);
-    const initialSecondsPerDay = Math.exp(
-      logMax - (initialSliderValue / 100) * (logMax - logMin)
-    );
-    this.timeScale = 62.83 / 365.25 / initialSecondsPerDay;
-    const initialMultiplier = 86400 / initialSecondsPerDay;
-    document.getElementById(
-      "time-scale-label"
-    ).textContent = `1 Earth day = ${initialSecondsPerDay.toFixed(2)} sec`;
-    document.getElementById(
-      "time-multiplier-label"
-    ).textContent = `${initialMultiplier.toFixed(0)}x (${(
-      86400 / initialSecondsPerDay
-    ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
+      this.timeScale = 62.83 / 365.25 / initialSecondsPerDay;
+      const initialMultiplier = 86400 / initialSecondsPerDay;
+      const labelEl = document.getElementById("time-scale-label");
+      const multiplierEl = document.getElementById("time-multiplier-label");
+      if (labelEl) {
+        labelEl.textContent = `1 Earth day = ${initialSecondsPerDay.toFixed(
+          2
+        )} sec`;
+      }
+      if (multiplierEl) {
+        multiplierEl.textContent = `${initialMultiplier.toFixed(0)}x (${(
+          86400 / initialSecondsPerDay
+        ).toLocaleString("en-US", { maximumFractionDigits: 0 })}:1)`;
+      }
+    }
 
     // Mouse controls
     canvas.addEventListener("mousedown", (e) => {

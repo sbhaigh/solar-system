@@ -5,138 +5,382 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Solar System Embed Test</title>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
       body {
         font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
         background: #1a1a1a;
         color: #fff;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
       }
       h1 {
         text-align: center;
         color: #4a9eff;
+        margin-bottom: 30px;
       }
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
+      .layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
       }
-      .embed-section {
-        margin: 40px 0;
-        padding: 20px;
+      .top-section {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .controls-panel {
         background: #2a2a2a;
+        padding: 20px;
         border-radius: 8px;
       }
-      .embed-section h2 {
-        margin-top: 0;
+      .controls-panel h2 {
+        color: #6ab7ff;
+        font-size: 18px;
+        margin-bottom: 20px;
+      }
+      .control-group {
+        margin-bottom: 20px;
+      }
+      .control-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #ccc;
+        font-size: 14px;
+      }
+      .control-group input[type="checkbox"] {
+        margin-right: 8px;
+      }
+      .control-group input[type="range"],
+      .control-group select {
+        width: 100%;
+        padding: 5px;
+      }
+      .control-group input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        background: #1a1a1a;
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 4px;
+      }
+      .url-display {
+        background: #1a1a1a;
+        padding: 12px;
+        border-radius: 4px;
+        word-break: break-all;
+        font-family: monospace;
+        font-size: 12px;
+        color: #4a9eff;
+        border: 1px solid #333;
+      }
+      .url-display strong {
+        display: block;
+        margin-bottom: 8px;
         color: #6ab7ff;
       }
-      .embed-section p {
-        color: #aaa;
+      .embed-container {
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .embed-container h2 {
+        color: #6ab7ff;
+        font-size: 18px;
         margin-bottom: 15px;
       }
       iframe {
+        width: 100%;
+        height: 700px;
         border: 2px solid #444;
         border-radius: 4px;
         display: block;
-        margin: 0 auto;
       }
-      .responsive-wrapper {
-        position: relative;
-        padding-bottom: 56.25%;
-        height: 0;
-        overflow: hidden;
-      }
-      .responsive-wrapper iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
+      .copy-button {
+        background: #4a9eff;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
         width: 100%;
-        height: 100%;
+        font-size: 14px;
+      }
+      .copy-button:hover {
+        background: #6ab7ff;
+      }
+      .value-display {
+        display: inline-block;
+        color: #4a9eff;
+        font-weight: bold;
+        margin-left: 10px;
+      }
+      .html-code {
+        background: #1a1a1a;
+        padding: 12px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        color: #6ab7ff;
+        border: 1px solid #333;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .html-code strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #6ab7ff;
+        font-family: Arial, sans-serif;
+      }
+      .code-content {
+        background: #0a0a0a;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #222;
+        margin-bottom: 10px;
+        user-select: all;
+      }
+      .bottom-section {
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .bottom-section h2 {
+        color: #6ab7ff;
+        font-size: 18px;
+        margin-bottom: 15px;
+      }
+      .bottom-section .url-display,
+      .bottom-section .html-code {
+        margin-bottom: 20px;
+      }
+      .bottom-section .html-code {
+        margin-bottom: 0;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Solar System Visualization - Embed Test</h1>
+      <h1>Solar System Embed Configurator</h1>
 
-      <div class="embed-section">
-        <h2>1. Default Embed</h2>
-        <p>Basic embed with all controls visible</p>
-        <iframe src="index.html" width="100%" height="600" frameborder="0">
-        </iframe>
-      </div>
+      <div class="layout">
+        <div class="top-section">
+          <div class="controls-panel">
+            <h2>Embed Parameters</h2>
 
-      <div class="embed-section">
-        <h2>2. Clean Embed (No Controls)</h2>
-        <p>Embed with controls hidden - pure visualization</p>
-        <iframe
-          src="index.html?controls=hidden"
-          width="100%"
-          height="600"
-          frameborder="0"
-        >
-        </iframe>
-      </div>
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="hideControls" />
+              Hide Controls Panel
+            </label>
+          </div>
 
-      <div class="embed-section">
-        <h2>3. Focus on Earth</h2>
-        <p>Automatically focused on Earth with closer zoom</p>
-        <iframe
-          src="index.html?controls=hidden&focus=2&zoom=50"
-          width="100%"
-          height="600"
-          frameborder="0"
-        >
-        </iframe>
-      </div>
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="hideInstructions" />
+              Hide Instructions Panel
+            </label>
+          </div>
 
-      <div class="embed-section">
-        <h2>4. Saturn's Rings</h2>
-        <p>Showcase Saturn and its ring system</p>
-        <iframe
-          src="index.html?controls=hidden&focus=5&zoom=200"
-          width="100%"
-          height="600"
-          frameborder="0"
-        >
-        </iframe>
-      </div>
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="showLabels" checked />
+              Show Planet Labels
+            </label>
+          </div>
 
-      <div class="embed-section">
-        <h2>5. Minimal View</h2>
-        <p>No UI elements - labels and orbits hidden</p>
-        <iframe
-          src="index.html?controls=hidden&labels=false&orbits=false"
-          width="100%"
-          height="600"
-          frameborder="0"
-        >
-        </iframe>
-      </div>
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="showOrbits" checked />
+              Show Orbit Lines
+            </label>
+          </div>
 
-      <div class="embed-section">
-        <h2>6. Responsive 16:9</h2>
-        <p>Responsive container that maintains aspect ratio</p>
-        <div class="responsive-wrapper">
-          <iframe
-            src="index.html?controls=hidden&focus=4&zoom=150"
-            frameborder="0"
-          >
-          </iframe>
+          <div class="control-group">
+            <label>
+              Focus Target
+              <select id="focusTarget">
+                <option value="-1">Sun (Center)</option>
+                <option value="0">Mercury</option>
+                <option value="1">Venus</option>
+                <option value="2">Earth</option>
+                <option value="3">Mars</option>
+                <option value="4">Jupiter</option>
+                <option value="5">Saturn</option>
+                <option value="6">Uranus</option>
+                <option value="7">Neptune</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label>
+              Zoom Level
+              <span class="value-display" id="zoomValue">800</span>
+              <input
+                type="range"
+                id="zoomSlider"
+                min="1"
+                max="3000"
+                value="800"
+              />
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label>
+              Time Scale (Speed)
+              <span class="value-display" id="timeScaleValue">50</span>
+              <input
+                type="range"
+                id="timeScaleSlider"
+                min="0"
+                max="100"
+                value="50"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="embed-container">
+          <h2>Live Preview</h2>
+          <iframe id="embedFrame" src="index.html"></iframe>
         </div>
       </div>
 
-      <div class="embed-section">
-        <h2>7. Fast Time Scale</h2>
-        <p>Higher time scale for faster orbital motion</p>
-        <iframe
-          src="index.html?controls=hidden&timeScale=80"
-          width="100%"
-          height="600"
-          frameborder="0"
-        >
-        </iframe>
+      <div class="bottom-section">
+        <h2>Embed Code</h2>
+        
+        <h3 style="color: #6ab7ff; font-size: 16px; margin-bottom: 10px; margin-top: 0;">URL</h3>
+        <div class="url-display">
+          <div id="embedUrl"></div>
+          <button class="copy-button" id="copyButton">Copy URL</button>
+        </div>
+
+        <h3 style="color: #6ab7ff; font-size: 16px; margin-bottom: 10px;">HTML Code</h3>
+        <div class="html-code">
+          <div class="code-content" id="embedCode"></div>
+          <button class="copy-button" id="copyCodeButton">
+            Copy HTML Code
+          </button>
+        </div>
       </div>
     </div>
+
+    <script>
+      const iframe = document.getElementById("embedFrame");
+      const hideControls = document.getElementById("hideControls");
+      const hideInstructions = document.getElementById("hideInstructions");
+      const showLabels = document.getElementById("showLabels");
+      const embedCode = document.getElementById("embedCode");
+      const copyCodeButton = document.getElementById("copyCodeButton");
+      const showOrbits = document.getElementById("showOrbits");
+      const focusTarget = document.getElementById("focusTarget");
+      const zoomSlider = document.getElementById("zoomSlider");
+      const timeScaleSlider = document.getElementById("timeScaleSlider");
+      const embedUrl = document.getElementById("embedUrl");
+      const copyButton = document.getElementById("copyButton");
+      const zoomValue = document.getElementById("zoomValue");
+      const timeScaleValue = document.getElementById("timeScaleValue");
+
+      function updateEmbed() {
+        const params = new URLSearchParams();
+
+        if (hideControls.checked) {
+          params.set("controls", "hidden");
+        }
+
+        if (hideInstructions.checked) {
+          params.set("instructions", "hidden");
+        }
+
+        if (!showLabels.checked) {
+          params.set("labels", "false");
+        }
+
+        if (!showOrbits.checked) {
+          params.set("orbits", "false");
+        }
+
+        const focus = focusTarget.value;
+        if (focus !== "-1") {
+          params.set("focus", focus);
+        }
+
+        const zoom = zoomSlider.value;
+        if (zoom !== "800") {
+          params.set("zoom", zoom);
+        }
+
+        const timeScale = timeScaleSlider.value;
+        params.set("timeScale", timeScale);
+
+        const url = `index.html${
+          params.toString() ? "?" + params.toString() : ""
+        }`;
+        iframe.src = url;
+        
+        // Update URLs with full domain
+        const fullUrl = `https://www.stevehaigh.net/solar-system/${url}`;
+        embedUrl.textContent = fullUrl;
+
+        // Update HTML embed code
+        const htmlCode = `<iframe src="${fullUrl}" width="100%" height="700" frameborder="0" allowfullscreen></iframe>`;
+        embedCode.textContent = htmlCode;
+      }
+
+      // Update value displays
+      zoomSlider.addEventListener("input", (e) => {
+        zoomValue.textContent = e.target.value;
+        updateEmbed();
+      });
+
+      timeScaleSlider.addEventListener("input", (e) => {
+        timeScaleValue.textContent = e.target.value;
+        updateEmbed();
+      });
+
+      // Update on any control change
+      hideControls.addEventListener("change", updateEmbed);
+      hideInstructions.addEventListener("change", updateEmbed);
+      showLabels.addEventListener("change", updateEmbed);
+      showOrbits.addEventListener("change", updateEmbed);
+      focusTarget.addEventListener("change", updateEmbed);
+
+      // Copy URL to clipboard
+      copyButton.addEventListener("click", () => {
+        const url = embedUrl.textContent;
+        navigator.clipboard.writeText(url).then(() => {
+          const originalText = copyButton.textContent;
+          copyButton.textContent = "Copied!";
+          setTimeout(() => {
+            copyButton.textContent = originalText;
+          }, 2000);
+        });
+      });
+
+      // Copy HTML code to clipboard
+      copyCodeButton.addEventListener("click", () => {
+        const code = embedCode.textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          const originalText = copyCodeButton.textContent;
+          copyCodeButton.textContent = "Copied!";
+          setTimeout(() => {
+            copyCodeButton.textContent = originalText;
+          }, 2000);
+        });
+      });
+
+      // Initialize
+      updateEmbed();
+    </script>
   </body>
 </html>

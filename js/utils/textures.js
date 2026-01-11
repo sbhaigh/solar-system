@@ -59,9 +59,6 @@ export function loadTextures(gl, config) {
 
   // Load Earth clouds texture
   textures.earthClouds = loadTexture(gl, "textures/earth_clouds_2k.jpg");
-  console.log(
-    "Loading Earth clouds texture from: textures/earth_clouds_2k.jpg"
-  );
 
   // Load Earth specular map
   textures.earthSpecular = loadTexture(

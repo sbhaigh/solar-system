@@ -161,6 +161,8 @@ window.addEventListener("load", function () {
 
   // Parse URL parameters
   const urlParams = new URLSearchParams(window.location.search);
+  console.log("URL params:", window.location.search);
+  console.log("controls param:", urlParams.get("controls"));
 
   // Apply URL parameters
   if (urlParams.has("zoom")) {
@@ -169,6 +171,9 @@ window.addEventListener("load", function () {
   if (urlParams.has("focus")) {
     camera.focusTarget = parseInt(urlParams.get("focus"));
   }
+
+  // Save timeScale from URL to reapply after setupControls
+  let urlTimeScale = null;
   if (urlParams.has("timeScale")) {
     const sliderValue = parseFloat(urlParams.get("timeScale"));
     // Use same logarithmic conversion as the slider
@@ -179,18 +184,11 @@ window.addEventListener("load", function () {
     const secondsPerDay = Math.exp(
       logMax - (sliderValue / 100) * (logMax - logMin)
     );
-    camera.timeScale = 62.83 / 365.25 / secondsPerDay;
-  }
-  if (urlParams.has("orbits")) {
-    camera.showOrbits = urlParams.get("orbits") === "true";
+    urlTimeScale = 62.83 / 365.25 / secondsPerDay;
   }
 
-  // Handle control visibility
-  if (urlParams.get("controls") === "hidden") {
-    const controlPanel = document.getElementById("controls");
-    if (controlPanel) {
-      controlPanel.style.display = "none";
-    }
+  if (urlParams.has("orbits")) {
+    camera.showOrbits = urlParams.get("orbits") === "true";
   }
 
   // Handle label visibility
@@ -198,6 +196,27 @@ window.addEventListener("load", function () {
     !urlParams.has("labels") || urlParams.get("labels") === "true";
 
   camera.setupControls(canvas);
+
+  // Reapply timeScale from URL after setupControls (which may have overwritten it)
+  if (urlTimeScale !== null) {
+    camera.timeScale = urlTimeScale;
+  }
+
+  // Handle control visibility (do this after setupControls)
+  if (urlParams.get("controls") === "hidden") {
+    const controlPanel = document.getElementById("controls");
+    if (controlPanel) {
+      controlPanel.remove();
+    }
+  }
+
+  // Handle instructions visibility separately
+  if (urlParams.get("instructions") === "hidden") {
+    const instructionsPanel = document.getElementById("instructions");
+    if (instructionsPanel) {
+      instructionsPanel.remove();
+    }
+  }
 
   // Create labels
   const labelsContainer = document.getElementById("labels-container");
@@ -218,10 +237,13 @@ window.addEventListener("load", function () {
     labelsContainer.appendChild(label);
 
     // Add planet to focus dropdown
-    const option = document.createElement("option");
-    option.value = index;
-    option.textContent = planet.name;
-    document.getElementById("focus-select").appendChild(option);
+    const focusSelect = document.getElementById("focus-select");
+    if (focusSelect) {
+      const option = document.createElement("option");
+      option.value = index;
+      option.textContent = planet.name;
+      focusSelect.appendChild(option);
+    }
 
     // Create labels for moons
     if (planet.moons) {
@@ -235,16 +257,23 @@ window.addEventListener("load", function () {
     }
   });
 
-  // Update UI controls to reflect URL parameter values
-  document.getElementById("zoom").value = camera.zoom;
-  document.getElementById("focus-select").value = camera.focusTarget;
-  document.getElementById("show-orbits").checked = camera.showOrbits;
+  // Update UI controls to reflect URL parameter values (only if they exist)
+  const zoomEl = document.getElementById("zoom");
+  const focusSelectEl = document.getElementById("focus-select");
+  const showOrbitsEl = document.getElementById("show-orbits");
+  const timeScaleEl = document.getElementById("time-scale");
 
-  // Update time scale slider if timeScale was set via URL
-  if (urlParams.has("timeScale")) {
-    document.getElementById("time-scale").value = parseFloat(
-      urlParams.get("timeScale")
-    );
+  if (zoomEl) {
+    zoomEl.value = camera.zoom;
+  }
+  if (focusSelectEl) {
+    focusSelectEl.value = camera.focusTarget;
+  }
+  if (showOrbitsEl) {
+    showOrbitsEl.checked = camera.showOrbits;
+  }
+  if (timeScaleEl && urlParams.has("timeScale")) {
+    timeScaleEl.value = parseFloat(urlParams.get("timeScale"));
   }
 
   // Animation state
@@ -396,7 +425,10 @@ window.addEventListener("load", function () {
         cameraTransition.progress = 1.0;
         cameraTransition.active = false;
         camera.focusTarget = cameraTransition.targetFocus;
-        document.getElementById("focus-select").value = camera.focusTarget;
+        const focusSelectEl = document.getElementById("focus-select");
+        if (focusSelectEl) {
+          focusSelectEl.value = camera.focusTarget;
+        }
       }
 
       // Smooth easing function (ease-in-out)
@@ -407,7 +439,10 @@ window.addEventListener("load", function () {
       camera.zoom =
         cameraTransition.startZoom +
         (cameraTransition.targetZoom - cameraTransition.startZoom) * eased;
-      document.getElementById("zoom").value = camera.zoom;
+      const zoomEl = document.getElementById("zoom");
+      if (zoomEl) {
+        zoomEl.value = camera.zoom;
+      }
     }
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

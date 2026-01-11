@@ -46,6 +46,16 @@ export function renderOrbitPath(gl, shaderProgram, orbitBuffer) {
   gl.uniform3fv(colorLoc, [0.5, 0.5, 0.5]);
   gl.uniform1i(emissiveLoc, true);
 
+  // Disable vertex attributes that orbit paths don't use
+  const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
+  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
+  if (normalLoc !== -1) {
+    gl.disableVertexAttribArray(normalLoc);
+  }
+  if (texCoordLoc !== -1) {
+    gl.disableVertexAttribArray(texCoordLoc);
+  }
+
   gl.bindBuffer(gl.ARRAY_BUFFER, orbitBuffer.position);
   const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
   gl.enableVertexAttribArray(positionLoc);
