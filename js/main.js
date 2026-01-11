@@ -40,6 +40,13 @@ window.addEventListener("load", function () {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
 
+  // Handle window resize
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  });
+
   // Create shader programs
   const shaderProgram = createShaderProgram(
     gl,
