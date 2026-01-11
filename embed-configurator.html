@@ -135,6 +135,20 @@
       .copy-button:hover {
         background: #6ab7ff;
       }
+      .view-button {
+        background: #2a2a2a;
+        color: #4a9eff;
+        border: 2px solid #4a9eff;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      .view-button:hover {
+        background: #4a9eff;
+        color: #fff;
+      }
       .value-display {
         display: inline-block;
         color: #4a9eff;
@@ -175,6 +189,15 @@
         color: #6ab7ff;
         font-size: 18px;
         margin-bottom: 15px;
+      }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .section-header h2 {
+        margin: 0;
       }
       .bottom-section .url-display,
       .bottom-section .html-code {
@@ -278,7 +301,10 @@
       </div>
 
       <div class="bottom-section">
-        <h2>Embed Code</h2>
+        <div class="section-header">
+          <h2>Embed Code</h2>
+          <button class="view-button" id="viewButton">View in New Tab</button>
+        </div>
         
         <h3 style="color: #6ab7ff; font-size: 16px; margin-bottom: 10px; margin-top: 0;">URL</h3>
         <div class="url-display">
@@ -307,6 +333,7 @@
       const timeScaleSlider = document.getElementById("timeScaleSlider");
       const embedUrl = document.getElementById("embedUrl");
       const copyButton = document.getElementById("copyButton");
+      const viewButton = document.getElementById("viewButton");
       const zoomValue = document.getElementById("zoomValue");
       const timeScaleValue = document.getElementById("timeScaleValue");
 
@@ -401,6 +428,12 @@
             copyCodeButton.textContent = originalText;
           }, 2000);
         });
+      });
+
+      // View configured solar system in new tab
+      viewButton.addEventListener("click", () => {
+        const url = embedUrl.textContent.replace('https://www.stevehaigh.net/solar-system/', '');
+        window.open(url, '_blank');
       });
 
       // Initialize
