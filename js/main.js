@@ -158,10 +158,52 @@ window.addEventListener("load", function () {
 
   // Create and setup camera
   const camera = new Camera();
+
+  // Parse URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+
+  // Apply URL parameters
+  if (urlParams.has("zoom")) {
+    camera.zoom = parseFloat(urlParams.get("zoom"));
+  }
+  if (urlParams.has("focus")) {
+    camera.focusTarget = parseInt(urlParams.get("focus"));
+  }
+  if (urlParams.has("timeScale")) {
+    const sliderValue = parseFloat(urlParams.get("timeScale"));
+    // Use same logarithmic conversion as the slider
+    const minSeconds = 0.01;
+    const maxSeconds = 30;
+    const logMin = Math.log(minSeconds);
+    const logMax = Math.log(maxSeconds);
+    const secondsPerDay = Math.exp(
+      logMax - (sliderValue / 100) * (logMax - logMin)
+    );
+    camera.timeScale = 62.83 / 365.25 / secondsPerDay;
+  }
+  if (urlParams.has("orbits")) {
+    camera.showOrbits = urlParams.get("orbits") === "true";
+  }
+
+  // Handle control visibility
+  if (urlParams.get("controls") === "hidden") {
+    const controlPanel = document.getElementById("controls");
+    if (controlPanel) {
+      controlPanel.style.display = "none";
+    }
+  }
+
+  // Handle label visibility
+  const showLabels =
+    !urlParams.has("labels") || urlParams.get("labels") === "true";
+
   camera.setupControls(canvas);
 
   // Create labels
   const labelsContainer = document.getElementById("labels-container");
+  if (!showLabels) {
+    labelsContainer.style.display = "none";
+  }
   const sunLabel = document.createElement("div");
   sunLabel.className = "planet-label";
   sunLabel.id = "label-sun";
@@ -192,6 +234,18 @@ window.addEventListener("load", function () {
       });
     }
   });
+
+  // Update UI controls to reflect URL parameter values
+  document.getElementById("zoom").value = camera.zoom;
+  document.getElementById("focus-select").value = camera.focusTarget;
+  document.getElementById("show-orbits").checked = camera.showOrbits;
+
+  // Update time scale slider if timeScale was set via URL
+  if (urlParams.has("timeScale")) {
+    document.getElementById("time-scale").value = parseFloat(
+      urlParams.get("timeScale")
+    );
+  }
 
   // Animation state
   let accumulatedTime = 0;
