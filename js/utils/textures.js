@@ -63,6 +63,15 @@ export function loadTextures(gl, config) {
     "Loading Earth clouds texture from: textures/earth_clouds_2k.jpg"
   );
 
+  // Load Earth specular map
+  textures.earthSpecular = loadTexture(
+    gl,
+    "textures/2k_earth_specular_map.tif"
+  );
+
+  // Load Earth normal map
+  textures.earthNormal = loadTexture(gl, "textures/2k_earth_normal_map.tif");
+
   config.planets.forEach((planet) => {
     if (planet.texture) {
       textures[planet.name] = loadTexture(gl, planet.texture);

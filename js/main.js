@@ -428,7 +428,11 @@ window.addEventListener("load", function () {
       sunRotationAngle,
       textures.sun,
       null, // No clouds for Sun
-      0 // No cloud rotation
+      0, // No cloud rotation
+      null, // No specular map for Sun
+      null, // No normal map for Sun
+      null, // No planet shadow for Sun
+      null // No planet radius for Sun
     );
 
     // Render planets
@@ -539,6 +543,10 @@ window.addEventListener("load", function () {
         planet.name === "Earth"
           ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
           : 0;
+      const specularTexture =
+        planet.name === "Earth" ? textures.earthSpecular : null;
+      const normalTexture =
+        planet.name === "Earth" ? textures.earthNormal : null;
       renderSphere(
         gl,
         shaderProgram,
@@ -551,7 +559,11 @@ window.addEventListener("load", function () {
         rotationAngle,
         planetTexture,
         cloudTexture,
-        cloudRotation
+        cloudRotation,
+        specularTexture,
+        normalTexture,
+        null, // No planet shadow for planets
+        null // No planet radius for planets
       );
 
       // Render planetary spot (Great Red Spot)
@@ -755,6 +767,12 @@ window.addEventListener("load", function () {
           }
 
           const moonTexture = textures[moon.name] || null;
+
+          // Calculate tidal locking rotation - same face always toward planet
+          // The rotation angle should match the orbital angle so the moon "shows"
+          // the same face to its planet (like Earth's Moon)
+          const tidalLockRotation = moonAngle + Math.PI / 2; // Add 90° to align texture properly
+
           renderSphere(
             gl,
             shaderProgram,
@@ -763,11 +781,15 @@ window.addEventListener("load", function () {
             [moonX, moonY, moonZ],
             null,
             null,
-            undefined,
-            undefined,
+            0, // No axial tilt for moons (for simplicity)
+            tidalLockRotation,
             moonTexture,
             null, // No clouds for moons
-            0 // No cloud rotation
+            0, // No cloud rotation
+            null, // No specular map for moons
+            null, // No normal map for moons
+            [x, y, z], // Planet position for shadow casting (lunar eclipse)
+            planet.radius // Planet radius for shadow
           );
         });
       }

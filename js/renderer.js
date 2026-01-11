@@ -152,7 +152,11 @@ export function renderSphere(
   rotationAngle,
   texture,
   cloudTexture,
-  cloudRotation
+  cloudRotation,
+  specularTexture,
+  normalTexture,
+  planetPos,
+  planetRadius
 ) {
   const modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, position);
@@ -220,6 +224,22 @@ export function renderSphere(
     gl.uniform1i(checkShadowLoc, false);
   }
 
+  // Planet shadow on moon (lunar eclipse)
+  const planetPosLoc = gl.getUniformLocation(shaderProgram, "uPlanetPosition");
+  const planetRadiusLoc = gl.getUniformLocation(shaderProgram, "uPlanetRadius");
+  const checkPlanetShadowLoc = gl.getUniformLocation(
+    shaderProgram,
+    "uCheckPlanetShadow"
+  );
+
+  if (planetPos && planetRadius) {
+    gl.uniform3fv(planetPosLoc, planetPos);
+    gl.uniform1f(planetRadiusLoc, planetRadius);
+    gl.uniform1i(checkPlanetShadowLoc, true);
+  } else {
+    gl.uniform1i(checkPlanetShadowLoc, false);
+  }
+
   // Texture support
   const useTextureLoc = gl.getUniformLocation(shaderProgram, "uUseTexture");
   if (texture) {
@@ -247,6 +267,28 @@ export function renderSphere(
   } else {
     gl.uniform1i(useCloudsLoc, 0);
     gl.uniform1f(cloudRotationLoc, 0.0);
+  }
+
+  // Specular map support (for Earth)
+  const useSpecularLoc = gl.getUniformLocation(shaderProgram, "uUseSpecular");
+  if (specularTexture && object.name === "Earth") {
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, specularTexture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSpecularMap"), 2);
+    gl.uniform1i(useSpecularLoc, 1);
+  } else {
+    gl.uniform1i(useSpecularLoc, 0);
+  }
+
+  // Normal map support (for Earth)
+  const useNormalLoc = gl.getUniformLocation(shaderProgram, "uUseNormal");
+  if (normalTexture && object.name === "Earth") {
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, normalTexture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uNormalMap"), 3);
+    gl.uniform1i(useNormalLoc, 1);
+  } else {
+    gl.uniform1i(useNormalLoc, 0);
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);

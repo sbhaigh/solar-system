@@ -33,6 +33,13 @@ export const fragmentShaderSource = `
     uniform bool uUseClouds;
     uniform sampler2D uCloudTexture;
     uniform float uCloudRotation;
+    uniform bool uUseSpecular;
+    uniform sampler2D uSpecularMap;
+    uniform bool uUseNormal;
+    uniform sampler2D uNormalMap;
+    uniform vec3 uPlanetPosition;
+    uniform float uPlanetRadius;
+    uniform bool uCheckPlanetShadow;
     varying vec3 vNormal;
     varying vec3 vPosition;
     varying vec2 vTexCoord;
@@ -46,6 +53,16 @@ export const fragmentShaderSource = `
             gl_FragColor = vec4(baseColor, 1.0);
         } else {
             vec3 normal = normalize(vNormal);
+            
+            // Apply normal map if enabled
+            if (uUseNormal) {
+                // Sample normal map and convert from [0,1] to [-1,1]
+                vec3 normalMap = texture2D(uNormalMap, vTexCoord).rgb * 2.0 - 1.0;
+                // For simplicity, just perturb the normal in tangent space
+                // This is a simplified normal mapping (proper implementation would use TBN matrix)
+                normal = normalize(normal + normalMap * 0.3);
+            }
+            
             vec3 lightDir = normalize(uLightPosition - vPosition);
             float diff = max(dot(normal, lightDir), 0.0);
             
@@ -83,9 +100,44 @@ export const fragmentShaderSource = `
                 }
             }
             
+            // Check if moon is in planet's shadow (lunar eclipse)
+            if (uCheckPlanetShadow) {
+                vec3 toLight = uLightPosition - vPosition;
+                float distToLight = length(toLight);
+                vec3 toLightDir = toLight / distToLight;
+                
+                vec3 toPlanet = uPlanetPosition - vPosition;
+                float t = dot(toPlanet, toLightDir);
+                
+                if (t > 0.0 && t < distToLight) {
+                    vec3 closestPoint = vPosition + toLightDir * t;
+                    float distToPlanetCenter = length(closestPoint - uPlanetPosition);
+                    
+                    // Umbra (full shadow)
+                    if (distToPlanetCenter < uPlanetRadius) {
+                        shadow = min(shadow, 0.1);
+                    }
+                    // Penumbra (partial shadow)
+                    else if (distToPlanetCenter < uPlanetRadius * 1.5) {
+                        float penumbra = (distToPlanetCenter - uPlanetRadius) / (uPlanetRadius * 0.5);
+                        shadow = min(shadow, mix(0.1, 1.0, penumbra));
+                    }
+                }
+            }
+            
             float ambient = 0.1;
             float lighting = max(diff * shadow * terminator, ambient * terminator);
             vec3 color = baseColor * lighting;
+            
+            // Add specular highlights if enabled
+            if (uUseSpecular) {
+                float specularIntensity = texture2D(uSpecularMap, vTexCoord).r;
+                vec3 viewDir = normalize(-vPosition); // Camera at origin
+                vec3 reflectDir = reflect(-lightDir, normal);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+                vec3 specular = vec3(1.0) * spec * specularIntensity * diff;
+                color += specular * shadow * terminator;
+            }
             
             // Blend cloud layer if enabled
             if (uUseClouds) {
