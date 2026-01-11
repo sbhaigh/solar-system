@@ -59,7 +59,7 @@ export function renderRing(
   ring,
   position,
   axialTilt,
-  orbitalAngle,
+  rotationAngle,
   texture
 ) {
   const modelMatrix = mat4.create();
@@ -71,21 +71,24 @@ export function renderRing(
   const innerRatio = ring.inner / ring.outer;
 
   if (axialTilt) {
+    // Rings must align with planet's equatorial plane
+    // Use same tilt transformation as planet with same rotation
     const tiltRad = (axialTilt * Math.PI) / 180;
     const cosTilt = Math.cos(tiltRad);
     const sinTilt = Math.sin(tiltRad);
-    const cosOrbit = Math.cos(orbitalAngle);
-    const sinOrbit = Math.sin(orbitalAngle);
+    const cosRot = Math.cos(rotationAngle);
+    const sinRot = Math.sin(rotationAngle);
 
-    modelMatrix[0] = scale * cosOrbit;
+    // Apply same transformation matrix as planet (from renderSphere)
+    modelMatrix[0] = scale * cosRot;
     modelMatrix[1] = 0;
-    modelMatrix[2] = -scale * sinOrbit;
-    modelMatrix[4] = sinOrbit * sinTilt;
+    modelMatrix[2] = scale * sinRot;
+    modelMatrix[4] = sinRot * sinTilt;
     modelMatrix[5] = cosTilt;
-    modelMatrix[6] = cosOrbit * sinTilt;
-    modelMatrix[8] = sinOrbit * cosTilt * scale;
-    modelMatrix[9] = -sinTilt * scale;
-    modelMatrix[10] = cosOrbit * cosTilt * scale;
+    modelMatrix[6] = -cosRot * sinTilt;
+    modelMatrix[8] = -sinRot * cosTilt * scale;
+    modelMatrix[9] = sinTilt * scale;
+    modelMatrix[10] = cosRot * cosTilt * scale;
   } else {
     modelMatrix[0] = scale;
     modelMatrix[5] = 1;
@@ -147,7 +150,9 @@ export function renderSphere(
   moonRadius,
   axialTilt,
   rotationAngle,
-  texture
+  texture,
+  cloudTexture,
+  cloudRotation
 ) {
   const modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, position);
@@ -200,6 +205,13 @@ export function renderSphere(
   gl.uniform3fv(lightPosLoc, [0, 0, 0]);
   gl.uniform1i(emissiveLoc, object.emissive || false);
 
+  // Day/night terminator (only for Earth)
+  const showTerminatorLoc = gl.getUniformLocation(
+    shaderProgram,
+    "uShowTerminator"
+  );
+  gl.uniform1i(showTerminatorLoc, object.name === "Earth");
+
   if (moonPos && moonRadius) {
     gl.uniform3fv(moonPosLoc, moonPos);
     gl.uniform1f(moonRadiusLoc, moonRadius);
@@ -217,6 +229,21 @@ export function renderSphere(
     gl.uniform1i(useTextureLoc, true);
   } else {
     gl.uniform1i(useTextureLoc, false);
+  }
+
+  // Cloud texture support (for Earth)
+  const useCloudsLoc = gl.getUniformLocation(shaderProgram, "uUseClouds");
+  const cloudRotationLoc = gl.getUniformLocation(shaderProgram, "uCloudRotation");
+  
+  if (cloudTexture && object.name === "Earth") {
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, cloudTexture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uCloudTexture"), 1);
+    gl.uniform1i(useCloudsLoc, 1);
+    gl.uniform1f(cloudRotationLoc, cloudRotation || 0.0);
+  } else {
+    gl.uniform1i(useCloudsLoc, 0);
+    gl.uniform1f(cloudRotationLoc, 0.0);
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);

@@ -29,6 +29,10 @@ export const fragmentShaderSource = `
     uniform bool uCheckShadow;
     uniform bool uUseTexture;
     uniform sampler2D uTexture;
+    uniform bool uShowTerminator;
+    uniform bool uUseClouds;
+    uniform sampler2D uCloudTexture;
+    uniform float uCloudRotation;
     varying vec3 vNormal;
     varying vec3 vPosition;
     varying vec2 vTexCoord;
@@ -44,6 +48,21 @@ export const fragmentShaderSource = `
             vec3 normal = normalize(vNormal);
             vec3 lightDir = normalize(uLightPosition - vPosition);
             float diff = max(dot(normal, lightDir), 0.0);
+            
+            // Day/night terminator effect
+            float terminator = 1.0;
+            if (uShowTerminator) {
+                // Sharp transition at day/night boundary
+                float threshold = 0.02;
+                if (diff < threshold) {
+                    // Night side - significantly darker
+                    terminator = 0.05;
+                } else if (diff < threshold + 0.05) {
+                    // Twilight zone - smooth transition
+                    float t = (diff - threshold) / 0.05;
+                    terminator = mix(0.05, 1.0, t);
+                }
+            }
             
             float shadow = 1.0;
             if (uCheckShadow && diff > 0.1) {
@@ -65,8 +84,24 @@ export const fragmentShaderSource = `
             }
             
             float ambient = 0.1;
-            float lighting = max(diff * shadow, ambient);
+            float lighting = max(diff * shadow * terminator, ambient * terminator);
             vec3 color = baseColor * lighting;
+            
+            // Blend cloud layer if enabled
+            if (uUseClouds) {
+                // Apply cloud rotation to UV coordinates
+                vec2 cloudUV = vec2(vTexCoord.x + uCloudRotation, vTexCoord.y);
+                // Wrap UV coordinates
+                cloudUV.x = fract(cloudUV.x);
+                vec4 cloudColor = texture2D(uCloudTexture, cloudUV);
+                // Use cloud texture's grayscale as alpha (white = opaque clouds, black = transparent)
+                float cloudAlpha = (cloudColor.r + cloudColor.g + cloudColor.b) / 3.0;
+                // Apply lighting to clouds
+                vec3 litClouds = cloudColor.rgb * lighting;
+                // Blend clouds over surface
+                color = mix(color, litClouds, cloudAlpha * 0.7);
+            }
+            
             gl_FragColor = vec4(color, 1.0);
         }
     }

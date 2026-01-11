@@ -418,7 +418,9 @@ window.addEventListener("load", function () {
       null,
       config.sun.axialTilt,
       sunRotationAngle,
-      textures.sun
+      textures.sun,
+      null, // No clouds for Sun
+      0 // No cloud rotation
     );
 
     // Render planets
@@ -504,6 +506,12 @@ window.addEventListener("load", function () {
         ? accumulatedTime * planet.rotationSpeed
         : 0;
       const planetTexture = textures[planet.name] || null;
+      const cloudTexture =
+        planet.name === "Earth" ? textures.earthClouds : null;
+      // Clouds rotate slightly faster than Earth (about 1.2x speed)
+      const cloudRotation = planet.name === "Earth" 
+        ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
+        : 0;
       renderSphere(
         gl,
         shaderProgram,
@@ -514,7 +522,9 @@ window.addEventListener("load", function () {
         moonRadius,
         planet.axialTilt,
         rotationAngle,
-        planetTexture
+        planetTexture,
+        cloudTexture,
+        cloudRotation
       );
 
       // Render planetary spot (Great Red Spot)
@@ -664,7 +674,8 @@ window.addEventListener("load", function () {
           const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
 
           let moonX, moonY, moonZ;
-          if (moon.orbitalTilt) {
+          if (moon.orbitalTilt !== undefined) {
+            // Moon has specific orbital tilt (e.g., Earth's Moon)
             const tiltRad = (moon.orbitalTilt * Math.PI) / 180;
             const baseX = moon.orbitRadius * Math.cos(moonAngle);
             const baseY =
@@ -674,7 +685,23 @@ window.addEventListener("load", function () {
             moonX = x + baseX;
             moonY = y + baseY;
             moonZ = z + baseZ;
+          } else if (planet.axialTilt !== undefined) {
+            // Align moon orbit with planet's equatorial plane
+            const tiltRad = (planet.axialTilt * Math.PI) / 180;
+            const cosTilt = Math.cos(tiltRad);
+            const sinTilt = Math.sin(tiltRad);
+
+            // Calculate position in equatorial plane
+            const localX = moon.orbitRadius * Math.cos(moonAngle);
+            const localY = 0;
+            const localZ = moon.orbitRadius * Math.sin(moonAngle);
+
+            // Apply axial tilt rotation
+            moonX = x + localX;
+            moonY = y + localY * cosTilt - localZ * sinTilt;
+            moonZ = z + localY * sinTilt + localZ * cosTilt;
           } else {
+            // Default: orbit in horizontal plane
             moonX = x + moon.orbitRadius * Math.cos(moonAngle);
             moonY = y;
             moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
@@ -710,7 +737,9 @@ window.addEventListener("load", function () {
             null,
             undefined,
             undefined,
-            moonTexture
+            moonTexture,
+            null, // No clouds for moons
+            0 // No cloud rotation
           );
         });
       }
@@ -726,7 +755,7 @@ window.addEventListener("load", function () {
             ring,
             [x, y, z],
             planet.axialTilt,
-            angle,
+            rotationAngle,
             ringTexture
           );
         });

@@ -57,6 +57,12 @@ export function loadTextures(gl, config) {
   // Load Saturn ring texture
   textures.saturnRing = loadTexture(gl, "textures/2k_saturn_ring_alpha.png");
 
+  // Load Earth clouds texture
+  textures.earthClouds = loadTexture(gl, "textures/earth_clouds_2k.jpg");
+  console.log(
+    "Loading Earth clouds texture from: textures/earth_clouds_2k.jpg"
+  );
+
   config.planets.forEach((planet) => {
     if (planet.texture) {
       textures[planet.name] = loadTexture(gl, planet.texture);
