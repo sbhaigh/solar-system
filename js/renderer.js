@@ -157,7 +157,8 @@ export function renderSphere(
   normalTexture,
   nightTexture,
   planetPos,
-  planetRadius
+  planetRadius,
+  time
 ) {
   const modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, position);
@@ -209,6 +210,10 @@ export function renderSphere(
   gl.uniform3fv(colorLoc, object.color);
   gl.uniform3fv(lightPosLoc, [0, 0, 0]);
   gl.uniform1i(emissiveLoc, object.emissive || false);
+
+  // Set time uniform for sun spots
+  const timeLoc = gl.getUniformLocation(shaderProgram, "uTime");
+  gl.uniform1f(timeLoc, time || 0);
 
   // Day/night terminator (only for Earth)
   const showTerminatorLoc = gl.getUniformLocation(

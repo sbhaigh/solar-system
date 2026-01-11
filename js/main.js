@@ -8,6 +8,8 @@ import {
   fragmentShaderSource,
   pointVertexShaderSource,
   pointFragmentShaderSource,
+  particleVertexShaderSource,
+  particleFragmentShaderSource,
 } from "./utils/shaders.js";
 import { createSphere, createRing, createOrbitPath } from "./geometry.js";
 import {
@@ -49,6 +51,11 @@ window.addEventListener("load", function () {
     pointVertexShaderSource,
     pointFragmentShaderSource
   );
+  const particleShaderProgram = createShaderProgram(
+    gl,
+    particleVertexShaderSource,
+    particleFragmentShaderSource
+  );
 
   // Create geometry buffers
   const sphereBuffers = createSphere(gl, 1, 32, 32);
@@ -86,6 +93,61 @@ window.addEventListener("load", function () {
     kuiperData.push({ angle, radius, height });
   }
   const kuiperBuffer = gl.createBuffer();
+
+  // CME Particle system
+  const cmeParticles = [];
+  const maxParticles = 200;
+  let nextCMETime = Math.random() * 5 + 3; // First CME in 3-8 seconds
+
+  function spawnCME() {
+    // Spawn particles from random point on sun surface
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    const sunRadius = config.sun.radius;
+
+    const spawnX = sunRadius * Math.sin(phi) * Math.cos(theta);
+    const spawnY = sunRadius * Math.sin(phi) * Math.sin(theta);
+    const spawnZ = sunRadius * Math.cos(phi);
+
+    // Create burst of particles
+    const particleCount = 20 + Math.floor(Math.random() * 30);
+    for (let i = 0; i < particleCount; i++) {
+      if (cmeParticles.length >= maxParticles) break;
+
+      // Random velocity outward from spawn point
+      const spread = 0.3;
+      const vx = spawnX / sunRadius + (Math.random() - 0.5) * spread;
+      const vy = spawnY / sunRadius + (Math.random() - 0.5) * spread;
+      const vz = spawnZ / sunRadius + (Math.random() - 0.5) * spread;
+      const speed = 0.5 + Math.random() * 1.0;
+
+      cmeParticles.push({
+        x: spawnX,
+        y: spawnY,
+        z: spawnZ,
+        vx: vx * speed,
+        vy: vy * speed,
+        vz: vz * speed,
+        life: 1.0,
+        size: 2 + Math.random() * 4,
+      });
+    }
+  }
+
+  function updateCMEParticles(deltaTime) {
+    // Update existing particles
+    for (let i = cmeParticles.length - 1; i >= 0; i--) {
+      const p = cmeParticles[i];
+      p.x += p.vx * deltaTime * 10;
+      p.y += p.vy * deltaTime * 10;
+      p.z += p.vz * deltaTime * 10;
+      p.life -= deltaTime * 0.3;
+
+      if (p.life <= 0) {
+        cmeParticles.splice(i, 1);
+      }
+    }
+  }
 
   // Create and setup camera
   const camera = new Camera();
@@ -433,7 +495,8 @@ window.addEventListener("load", function () {
       null, // No normal map for Sun
       null, // No night map for Sun
       null, // No planet shadow for Sun
-      null // No planet radius for Sun
+      null, // No planet radius for Sun
+      accumulatedTime // Time for sun spots
     );
 
     // Render planets
@@ -566,7 +629,8 @@ window.addEventListener("load", function () {
         normalTexture,
         nightTexture,
         null, // No planet shadow for planets
-        null // No planet radius for planets
+        null, // No planet radius for planets
+        accumulatedTime // Time for effects
       );
 
       // Render planetary spot (Great Red Spot)
@@ -793,7 +857,8 @@ window.addEventListener("load", function () {
             null, // No normal map for moons
             null, // No night map for moons
             [x, y, z], // Planet position for shadow casting (lunar eclipse)
-            planet.radius // Planet radius for shadow
+            planet.radius, // Planet radius for shadow
+            accumulatedTime // Time for effects
           );
         });
       }
@@ -815,6 +880,80 @@ window.addEventListener("load", function () {
         });
       }
     });
+
+    // Update and render CME particles
+    updateCMEParticles(deltaTime);
+
+    // Check if it's time to spawn new CME
+    if (accumulatedTime > nextCMETime) {
+      spawnCME();
+      nextCMETime = accumulatedTime + Math.random() * 8 + 5; // Next CME in 5-13 seconds
+    }
+
+    // Render CME particles
+    if (cmeParticles.length > 0) {
+      gl.useProgram(particleShaderProgram);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive blending
+      gl.depthMask(false); // Don't write to depth buffer
+
+      const particleProjectionLoc = gl.getUniformLocation(
+        particleShaderProgram,
+        "uProjectionMatrix"
+      );
+      const particleViewLoc = gl.getUniformLocation(
+        particleShaderProgram,
+        "uViewMatrix"
+      );
+      gl.uniformMatrix4fv(particleProjectionLoc, false, projectionMatrix);
+      gl.uniformMatrix4fv(particleViewLoc, false, viewMatrix);
+
+      // Create buffers for particle data
+      const positions = [];
+      const sizes = [];
+      const alphas = [];
+
+      cmeParticles.forEach((p) => {
+        positions.push(p.x, p.y, p.z);
+        sizes.push(p.size);
+        alphas.push(p.life);
+      });
+
+      const posBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array(positions),
+        gl.DYNAMIC_DRAW
+      );
+      const posLoc = gl.getAttribLocation(particleShaderProgram, "aPosition");
+      gl.enableVertexAttribArray(posLoc);
+      gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+      const sizeBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sizes), gl.DYNAMIC_DRAW);
+      const sizeLoc = gl.getAttribLocation(particleShaderProgram, "aSize");
+      gl.enableVertexAttribArray(sizeLoc);
+      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, 0, 0);
+
+      const alphaBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, alphaBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(alphas), gl.DYNAMIC_DRAW);
+      const alphaLoc = gl.getAttribLocation(particleShaderProgram, "aAlpha");
+      gl.enableVertexAttribArray(alphaLoc);
+      gl.vertexAttribPointer(alphaLoc, 1, gl.FLOAT, false, 0, 0);
+
+      gl.drawArrays(gl.POINTS, 0, cmeParticles.length);
+
+      // Cleanup
+      gl.deleteBuffer(posBuffer);
+      gl.deleteBuffer(sizeBuffer);
+      gl.deleteBuffer(alphaBuffer);
+
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+    }
 
     requestAnimationFrame(render);
   }

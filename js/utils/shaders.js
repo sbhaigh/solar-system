@@ -39,16 +39,61 @@ export const fragmentShaderSource = `
     uniform sampler2D uNormalMap;
     uniform bool uUseNight;
     uniform sampler2D uNightMap;
+    uniform float uTime;
     uniform vec3 uPlanetPosition;
     uniform float uPlanetRadius;
     uniform bool uCheckPlanetShadow;
     varying vec3 vNormal;
     varying vec3 vPosition;
     varying vec2 vTexCoord;
+    
+    // Simple 2D noise function for sun spots
+    float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+    
+    float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+    
     void main() {
         vec3 baseColor = uColor;
         if (uUseTexture) {
             baseColor = texture2D(uTexture, vTexCoord).rgb;
+        }
+        
+        // Add sun spots for emissive objects (sun)
+        if (uEmissive) {
+            // Spots stay fixed to rotating sun surface
+            vec2 spotCoord = vTexCoord;
+            
+            // Low frequency noise for clustering regions
+            float clusterNoise = noise(spotCoord * 8.0 + uTime * 0.03);
+            
+            // Only create spots in cluster regions
+            if (clusterNoise > 0.55) {
+                // Very high frequency for small, sharp spots within clusters
+                float n = noise(spotCoord * 100.0);
+                n += 0.3 * noise(spotCoord * 200.0);
+                n /= 1.3;
+                
+                // Add slow temporal variation to make spots appear and disappear
+                float timeFactor = noise(vec2(spotCoord.x * 10.0 + uTime * 0.05, spotCoord.y * 10.0));
+                float threshold = 0.88 + timeFactor * 0.1; // Higher threshold for fewer spots
+                
+                // Create rare, small, very dark spots
+                if (n > threshold) {
+                    float spotDarkness = smoothstep(threshold, threshold + 0.05, n);
+                    baseColor *= (1.0 - spotDarkness * 0.92); // Almost black
+                }
+            }
         }
         
         // Blend in night map on dark side
@@ -193,6 +238,36 @@ export const pointFragmentShaderSource = `
         vec2 coord = gl_PointCoord - vec2(0.5);
         if (length(coord) > 0.5) discard;
         gl_FragColor = vec4(uColor, 1.0);
+    }
+`;
+
+// CME Particle shaders
+export const particleVertexShaderSource = `
+    attribute vec3 aPosition;
+    attribute float aSize;
+    attribute float aAlpha;
+    uniform mat4 uViewMatrix;
+    uniform mat4 uProjectionMatrix;
+    varying float vAlpha;
+    void main() {
+        vAlpha = aAlpha;
+        vec4 viewPosition = uViewMatrix * vec4(aPosition, 1.0);
+        gl_Position = uProjectionMatrix * viewPosition;
+        gl_PointSize = aSize / -viewPosition.z * 500.0; // Scale with distance
+    }
+`;
+
+export const particleFragmentShaderSource = `
+    precision mediump float;
+    varying float vAlpha;
+    void main() {
+        // Circular particle with soft edges
+        vec2 coord = gl_PointCoord - vec2(0.5);
+        float dist = length(coord);
+        if (dist > 0.5) discard;
+        float alpha = (1.0 - dist * 2.0) * vAlpha;
+        // Bright orange/yellow glow for plasma
+        gl_FragColor = vec4(1.0, 0.6, 0.2, alpha);
     }
 `;
 
