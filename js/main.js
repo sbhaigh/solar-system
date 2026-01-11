@@ -128,6 +128,81 @@ window.addEventListener("load", function () {
   let accumulatedTime = 0;
   let lastFrameTime = 0;
 
+  // Planet click tracking
+  const planetScreenPositions = [];
+
+  // Camera transition state
+  let cameraTransition = {
+    active: false,
+    startZoom: camera.zoom,
+    targetZoom: camera.zoom,
+    startFocus: camera.focusTarget,
+    targetFocus: camera.focusTarget,
+    progress: 0,
+    duration: 1.5, // seconds
+  };
+
+  // Click handler for selecting planets
+  canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Find closest planet to click
+    let closestPlanet = -1;
+    let closestDistance = Infinity;
+
+    // Check sun
+    if (planetScreenPositions.sun && planetScreenPositions.sun.visible) {
+      const dx = clickX - planetScreenPositions.sun.x;
+      const dy = clickY - planetScreenPositions.sun.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 30 && distance < closestDistance) {
+        closestPlanet = -1;
+        closestDistance = distance;
+      }
+    }
+
+    // Check planets
+    if (planetScreenPositions.planets) {
+      planetScreenPositions.planets.forEach((planet, index) => {
+        if (planet && planet.visible) {
+          const dx = clickX - planet.x;
+          const dy = clickY - planet.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < 30 && distance < closestDistance) {
+            closestPlanet = index;
+            closestDistance = distance;
+          }
+        }
+      });
+    }
+
+    if (closestDistance < Infinity) {
+      // Calculate appropriate zoom based on object size
+      let targetRadius;
+      if (closestPlanet === -1) {
+        // Sun
+        targetRadius = config.sun.radius;
+      } else {
+        // Planet
+        targetRadius = config.planets[closestPlanet].radius;
+      }
+
+      // Set zoom to make the object nicely visible (about 1/4 of screen height)
+      const targetZoom = targetRadius * 8;
+      const clampedZoom = Math.max(10, Math.min(3000, targetZoom));
+
+      // Start smooth transition
+      cameraTransition.active = true;
+      cameraTransition.startZoom = camera.zoom;
+      cameraTransition.targetZoom = clampedZoom;
+      cameraTransition.startFocus = camera.focusTarget;
+      cameraTransition.targetFocus = closestPlanet;
+      cameraTransition.progress = 0;
+    }
+  });
+
   // Main render loop
   function render(time) {
     time *= 0.001;
@@ -136,6 +211,37 @@ window.addEventListener("load", function () {
     const deltaTime = time - lastFrameTime;
     lastFrameTime = time;
     accumulatedTime += deltaTime * camera.timeScale;
+
+    // Update camera transition
+    if (cameraTransition.active) {
+      cameraTransition.progress += deltaTime / cameraTransition.duration;
+
+      if (cameraTransition.progress >= 1.0) {
+        // Transition complete
+        cameraTransition.progress = 1.0;
+        cameraTransition.active = false;
+        camera.focusTarget = cameraTransition.targetFocus;
+      }
+
+      // Smooth easing function (ease-in-out)
+      const t = cameraTransition.progress;
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      // Interpolate zoom
+      camera.zoom =
+        cameraTransition.startZoom +
+        (cameraTransition.targetZoom - cameraTransition.startZoom) * eased;
+      document.getElementById("zoom").value = camera.zoom;
+
+      // Switch focus halfway through transition
+      if (
+        cameraTransition.progress >= 0.5 &&
+        camera.focusTarget !== cameraTransition.targetFocus
+      ) {
+        camera.focusTarget = cameraTransition.targetFocus;
+        document.getElementById("focus-select").value = camera.focusTarget;
+      }
+    }
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.useProgram(shaderProgram);
@@ -288,6 +394,10 @@ window.addEventListener("load", function () {
       projectionMatrix,
       canvas
     );
+
+    // Store sun position for click detection
+    planetScreenPositions.sun = sunScreenPos;
+
     if (sunScreenPos.visible) {
       sunLabel.style.display = "block";
       sunLabel.style.left = sunScreenPos.x + "px";
@@ -312,6 +422,7 @@ window.addEventListener("load", function () {
     );
 
     // Render planets
+    planetScreenPositions.planets = [];
     config.planets.forEach((planet, index) => {
       const startAngleRad = ((planet.startAngle || 0) * Math.PI) / 180;
       const angle = accumulatedTime * planet.orbitSpeed * 0.1 + startAngleRad;
@@ -344,6 +455,14 @@ window.addEventListener("load", function () {
         projectionMatrix,
         canvas
       );
+
+      // Store planet screen position for click detection
+      planetScreenPositions.planets[index] = {
+        x: screenPos.x,
+        y: screenPos.y,
+        visible: screenPos.visible,
+      };
+
       const label = document.getElementById(`label-planet-${index}`);
       if (screenPos.visible) {
         label.style.display = "block";
