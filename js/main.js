@@ -207,9 +207,44 @@ window.addEventListener("load", function () {
     targetZoom: camera.zoom,
     startFocus: camera.focusTarget,
     targetFocus: camera.focusTarget,
+    startFocusPos: { x: 0, y: 0, z: 0 },
+    targetFocusPos: { x: 0, y: 0, z: 0 },
     progress: 0,
     duration: 1.5, // seconds
   };
+
+  // Helper function to calculate position of a focus target
+  function calculateFocusPosition(focusIndex, time) {
+    if (focusIndex === -1) {
+      // Sun at origin
+      return { x: camera.panX, y: camera.panY, z: camera.panZ };
+    } else if (focusIndex >= 0 && focusIndex < config.planets.length) {
+      const planet = config.planets[focusIndex];
+      const startAngleRad = ((planet.startAngle || 0) * Math.PI) / 180;
+      const angle = time * planet.orbitSpeed * 0.1 + startAngleRad;
+      const incRad = ((planet.inclination || 0) * Math.PI) / 180;
+      const sinInc = Math.sin(incRad);
+      const cosInc = Math.cos(incRad);
+
+      let x, y, z;
+      if (planet.eccentricity && planet.eccentricity > 0) {
+        const e = planet.eccentricity;
+        const a = planet.orbitRadius;
+        const r = (a * (1 - e * e)) / (1 + e * Math.cos(angle));
+        x = r * Math.cos(angle);
+        const zFlat = r * Math.sin(angle);
+        y = -zFlat * sinInc;
+        z = zFlat * cosInc;
+      } else {
+        x = planet.orbitRadius * Math.cos(angle);
+        const zFlat = planet.orbitRadius * Math.sin(angle);
+        y = -zFlat * sinInc;
+        z = zFlat * cosInc;
+      }
+      return { x, y, z };
+    }
+    return { x: camera.panX, y: camera.panY, z: camera.panZ };
+  }
 
   // Function to start camera transition to a planet
   function transitionToPlanet(planetIndex) {
@@ -227,12 +262,21 @@ window.addEventListener("load", function () {
     const targetZoom = targetRadius * 8;
     const clampedZoom = Math.max(10, Math.min(3000, targetZoom));
 
+    // Calculate current and target focus positions
+    const startPos = calculateFocusPosition(
+      camera.focusTarget,
+      accumulatedTime
+    );
+    const targetPos = calculateFocusPosition(planetIndex, accumulatedTime);
+
     // Start smooth transition
     cameraTransition.active = true;
     cameraTransition.startZoom = camera.zoom;
     cameraTransition.targetZoom = clampedZoom;
     cameraTransition.startFocus = camera.focusTarget;
     cameraTransition.targetFocus = planetIndex;
+    cameraTransition.startFocusPos = startPos;
+    cameraTransition.targetFocusPos = targetPos;
     cameraTransition.progress = 0;
   }
 
@@ -298,6 +342,7 @@ window.addEventListener("load", function () {
         cameraTransition.progress = 1.0;
         cameraTransition.active = false;
         camera.focusTarget = cameraTransition.targetFocus;
+        document.getElementById("focus-select").value = camera.focusTarget;
       }
 
       // Smooth easing function (ease-in-out)
@@ -309,15 +354,6 @@ window.addEventListener("load", function () {
         cameraTransition.startZoom +
         (cameraTransition.targetZoom - cameraTransition.startZoom) * eased;
       document.getElementById("zoom").value = camera.zoom;
-
-      // Switch focus halfway through transition
-      if (
-        cameraTransition.progress >= 0.5 &&
-        camera.focusTarget !== cameraTransition.targetFocus
-      ) {
-        camera.focusTarget = cameraTransition.targetFocus;
-        document.getElementById("focus-select").value = camera.focusTarget;
-      }
     }
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -335,7 +371,33 @@ window.addEventListener("load", function () {
     let focusY = camera.panY;
     let focusZ = camera.panZ;
 
-    if (camera.focusTarget >= 0 && camera.focusTarget < config.planets.length) {
+    // If transitioning, interpolate between start and target positions
+    if (cameraTransition.active) {
+      const t = cameraTransition.progress;
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      // Update target position for moving planets
+      cameraTransition.targetFocusPos = calculateFocusPosition(
+        cameraTransition.targetFocus,
+        accumulatedTime
+      );
+
+      focusX =
+        cameraTransition.startFocusPos.x +
+        (cameraTransition.targetFocusPos.x - cameraTransition.startFocusPos.x) *
+          eased;
+      focusY =
+        cameraTransition.startFocusPos.y +
+        (cameraTransition.targetFocusPos.y - cameraTransition.startFocusPos.y) *
+          eased;
+      focusZ =
+        cameraTransition.startFocusPos.z +
+        (cameraTransition.targetFocusPos.z - cameraTransition.startFocusPos.z) *
+          eased;
+    } else if (
+      camera.focusTarget >= 0 &&
+      camera.focusTarget < config.planets.length
+    ) {
       const planet = config.planets[camera.focusTarget];
       const startAngleRad = ((planet.startAngle || 0) * Math.PI) / 180;
       const angle = accumulatedTime * planet.orbitSpeed * 0.1 + startAngleRad;
@@ -781,7 +843,11 @@ window.addEventListener("load", function () {
             (cameraY - y) * (cameraY - y) +
             (cameraZ - z) * (cameraZ - z)
         );
-        const showMoonLabels = distToPlanet < 100;
+        // Only show moon labels when focused on this planet or very close to it
+        const isFocused =
+          camera.focusTarget === index ||
+          (cameraTransition.active && cameraTransition.targetFocus === index);
+        const showMoonLabels = isFocused || distToPlanet < 50;
 
         planet.moons.forEach((moon, moonIndex) => {
           const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
@@ -800,20 +866,32 @@ window.addEventListener("load", function () {
             moonZ = z + baseZ;
           } else if (planet.axialTilt !== undefined) {
             // Align moon orbit with planet's equatorial plane
-            // Orbital plane is tilted but doesn't rotate with planet spin
+            // Use same transformation as rings to stay in same plane
             const tiltRad = (planet.axialTilt * Math.PI) / 180;
             const cosTilt = Math.cos(tiltRad);
             const sinTilt = Math.sin(tiltRad);
+            const cosRot = Math.cos(rotationAngle);
+            const sinRot = Math.sin(rotationAngle);
 
             // Calculate position in orbital plane
             const localX = moon.orbitRadius * Math.cos(moonAngle);
             const localY = 0;
             const localZ = moon.orbitRadius * Math.sin(moonAngle);
 
-            // Apply only axial tilt (not planet rotation)
-            moonX = x + localX;
-            moonY = y + localY * cosTilt - localZ * sinTilt;
-            moonZ = z + localY * sinTilt + localZ * cosTilt;
+            // Apply same transformation as rings (axial tilt + rotation)
+            const transformedX = localX * cosRot + localZ * sinRot;
+            const transformedY =
+              localX * sinRot * sinTilt +
+              localY * cosTilt -
+              localZ * cosRot * sinTilt;
+            const transformedZ =
+              -localX * sinRot * cosTilt +
+              localY * sinTilt +
+              localZ * cosRot * cosTilt;
+
+            moonX = x + transformedX;
+            moonY = y + transformedY;
+            moonZ = z + transformedZ;
           } else {
             // Default: orbit in horizontal plane
             moonX = x + moon.orbitRadius * Math.cos(moonAngle);
