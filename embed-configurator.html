@@ -20,10 +20,28 @@
         max-width: 1400px;
         margin: 0 auto;
       }
-      h1 {
-        text-align: center;
-        color: #4a9eff;
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 30px;
+      }
+      h1 {
+        color: #4a9eff;
+        margin: 0;
+      }
+      .solar-system-link {
+        color: #4a9eff;
+        text-decoration: none;
+        font-size: 16px;
+        padding: 10px 20px;
+        border: 2px solid #4a9eff;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+      }
+      .solar-system-link:hover {
+        background: #4a9eff;
+        color: #1a1a1a;
       }
       .layout {
         display: flex;
@@ -145,7 +163,7 @@
         padding: 10px;
         border-radius: 4px;
         border: 1px solid #222;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         user-select: all;
       }
       .bottom-section {
@@ -169,7 +187,10 @@
   </head>
   <body>
     <div class="container">
-      <h1>Solar System Embed Configurator</h1>
+      <div class="header">
+        <h1>Solar System Embed Configurator</h1>
+        <a href="index.html" class="solar-system-link">View Solar System →</a>
+      </div>
 
       <div class="layout">
         <div class="top-section">
@@ -268,9 +289,7 @@
         <h3 style="color: #6ab7ff; font-size: 16px; margin-bottom: 10px;">HTML Code</h3>
         <div class="html-code">
           <div class="code-content" id="embedCode"></div>
-          <button class="copy-button" id="copyCodeButton">
-            Copy HTML Code
-          </button>
+          <button class="copy-button" id="copyCodeButton">Copy HTML</button>
         </div>
       </div>
     </div>
