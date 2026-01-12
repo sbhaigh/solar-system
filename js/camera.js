@@ -51,7 +51,8 @@ export class Camera {
     const focusEl = document.getElementById("focus-select");
     if (focusEl) {
       focusEl.addEventListener("change", (e) => {
-        const newFocus = parseInt(e.target.value);
+        const value = e.target.value;
+        const newFocus = value.startsWith("moon-") ? value : parseInt(value);
         // Trigger camera transition callback if it exists
         if (this.onFocusChange) {
           this.onFocusChange(newFocus);

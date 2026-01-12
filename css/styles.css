@@ -156,6 +156,26 @@ body {
   font-size: 12px;
 }
 
+/* Show desktop instructions by default (for devices with fine pointer like mouse) */
+.desktop-instructions {
+  display: block;
+}
+
+.touch-instructions {
+  display: none;
+}
+
+/* Show touch instructions for devices with coarse pointer (touch screens) */
+@media (pointer: coarse) {
+  .desktop-instructions {
+    display: none;
+  }
+
+  .touch-instructions {
+    display: block;
+  }
+}
+
 .planet-label {
   position: absolute;
   color: white;

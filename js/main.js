@@ -253,6 +253,14 @@ window.addEventListener("load", function () {
         moonLabel.id = `label-moon-${index}-${moonIndex}`;
         moonLabel.textContent = moon.name;
         labelsContainer.appendChild(moonLabel);
+
+        // Add only Earth's Moon to focus dropdown
+        if (focusSelect && planet.name === "Earth" && moon.name === "Moon") {
+          const moonOption = document.createElement("option");
+          moonOption.value = `moon-${index}-${moonIndex}`;
+          moonOption.textContent = `    ↳ ${moon.name}`;
+          focusSelect.appendChild(moonOption);
+        }
       });
     }
   });
@@ -301,6 +309,66 @@ window.addEventListener("load", function () {
     if (focusIndex === -1) {
       // Sun at origin
       return { x: camera.panX, y: camera.panY, z: camera.panZ };
+    } else if (
+      typeof focusIndex === "string" &&
+      focusIndex.startsWith("moon-")
+    ) {
+      // Moon focus: format is "moon-planetIndex-moonIndex"
+      const parts = focusIndex.split("-");
+      const planetIndex = parseInt(parts[1]);
+      const moonIndex = parseInt(parts[2]);
+      const planet = config.planets[planetIndex];
+      const moon = planet.moons[moonIndex];
+
+      // First get planet position
+      const planetPos = calculateFocusPosition(planetIndex, time);
+      const rotationAngle = time * planet.rotationSpeed * 0.1;
+      const moonAngle = time * moon.orbitSpeed * 0.1;
+
+      let moonX, moonY, moonZ;
+      if (moon.orbitalTilt !== undefined) {
+        // Moon has specific orbital tilt (e.g., Earth's Moon)
+        const tiltRad = (moon.orbitalTilt * Math.PI) / 180;
+        const baseX = moon.orbitRadius * Math.cos(moonAngle);
+        const baseY =
+          moon.orbitRadius * Math.sin(moonAngle) * Math.sin(tiltRad);
+        const baseZ =
+          moon.orbitRadius * Math.sin(moonAngle) * Math.cos(tiltRad);
+        moonX = planetPos.x + baseX;
+        moonY = planetPos.y + baseY;
+        moonZ = planetPos.z + baseZ;
+      } else if (planet.axialTilt !== undefined) {
+        // Align moon orbit with planet's equatorial plane
+        const tiltRad = (planet.axialTilt * Math.PI) / 180;
+        const cosTilt = Math.cos(tiltRad);
+        const sinTilt = Math.sin(tiltRad);
+        const cosRot = Math.cos(rotationAngle);
+        const sinRot = Math.sin(rotationAngle);
+
+        const localX = moon.orbitRadius * Math.cos(moonAngle);
+        const localY = 0;
+        const localZ = moon.orbitRadius * Math.sin(moonAngle);
+
+        const transformedX = localX * cosRot + localZ * sinRot;
+        const transformedY =
+          localX * sinRot * sinTilt +
+          localY * cosTilt -
+          localZ * cosRot * sinTilt;
+        const transformedZ =
+          -localX * sinRot * cosTilt +
+          localY * sinTilt +
+          localZ * cosRot * cosTilt;
+
+        moonX = planetPos.x + transformedX;
+        moonY = planetPos.y + transformedY;
+        moonZ = planetPos.z + transformedZ;
+      } else {
+        // Default: orbit in horizontal plane
+        moonX = planetPos.x + moon.orbitRadius * Math.cos(moonAngle);
+        moonY = planetPos.y;
+        moonZ = planetPos.z + moon.orbitRadius * Math.sin(moonAngle);
+      }
+      return { x: moonX, y: moonY, z: moonZ };
     } else if (focusIndex >= 0 && focusIndex < config.planets.length) {
       const planet = config.planets[focusIndex];
       const startAngleRad = ((planet.startAngle || 0) * Math.PI) / 180;
@@ -336,6 +404,15 @@ window.addEventListener("load", function () {
     if (planetIndex === -1) {
       // Sun
       targetRadius = config.sun.radius;
+    } else if (
+      typeof planetIndex === "string" &&
+      planetIndex.startsWith("moon-")
+    ) {
+      // Moon
+      const parts = planetIndex.split("-");
+      const pIndex = parseInt(parts[1]);
+      const mIndex = parseInt(parts[2]);
+      targetRadius = config.planets[pIndex].moons[mIndex].radius;
     } else {
       // Planet
       targetRadius = config.planets[planetIndex].radius;
@@ -483,6 +560,18 @@ window.addEventListener("load", function () {
         cameraTransition.startFocusPos.z +
         (cameraTransition.targetFocusPos.z - cameraTransition.startFocusPos.z) *
           eased;
+    } else if (
+      typeof camera.focusTarget === "string" &&
+      camera.focusTarget.startsWith("moon-")
+    ) {
+      // Moon focus
+      const focusPos = calculateFocusPosition(
+        camera.focusTarget,
+        accumulatedTime
+      );
+      focusX = focusPos.x;
+      focusY = focusPos.y;
+      focusZ = focusPos.z;
     } else if (
       camera.focusTarget >= 0 &&
       camera.focusTarget < config.planets.length
