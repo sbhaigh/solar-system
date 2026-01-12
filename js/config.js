@@ -32,7 +32,7 @@ export const config = {
       texture: "textures/venus_2k.jpg",
       orbitRadius: 27.7,
       orbitSpeed: -1.62,
-      rotationSpeed: 0.004,
+      rotationSpeed: 0.1,
       startAngle: 120,
       axialTilt: 177.4,
       inclination: 3.39,
