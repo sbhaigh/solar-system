@@ -254,8 +254,8 @@ window.addEventListener("load", function () {
         moonLabel.textContent = moon.name;
         labelsContainer.appendChild(moonLabel);
 
-        // Add only Earth's Moon to focus dropdown
-        if (focusSelect && planet.name === "Earth" && moon.name === "Moon") {
+        // Add all moons to focus dropdown
+        if (focusSelect) {
           const moonOption = document.createElement("option");
           moonOption.value = `moon-${index}-${moonIndex}`;
           moonOption.textContent = `    ↳ ${moon.name}`;
