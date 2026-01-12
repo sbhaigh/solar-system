@@ -265,6 +265,13 @@ window.addEventListener("load", function () {
     }
   });
 
+  // Helper function to convert zoom to slider value (inverse exponential)
+  const zoomToSlider = (zoomValue) => {
+    const min = 1;
+    const max = 3000;
+    return 1 + 2999 * (Math.log(zoomValue / min) / Math.log(max / min));
+  };
+
   // Update UI controls to reflect URL parameter values (only if they exist)
   const zoomEl = document.getElementById("zoom");
   const focusSelectEl = document.getElementById("focus-select");
@@ -272,7 +279,7 @@ window.addEventListener("load", function () {
   const timeScaleEl = document.getElementById("time-scale");
 
   if (zoomEl) {
-    zoomEl.value = camera.zoom;
+    zoomEl.value = 3001 - zoomToSlider(camera.zoom);
   }
   if (focusSelectEl) {
     focusSelectEl.value = camera.focusTarget;
@@ -518,7 +525,7 @@ window.addEventListener("load", function () {
         (cameraTransition.targetZoom - cameraTransition.startZoom) * eased;
       const zoomEl = document.getElementById("zoom");
       if (zoomEl) {
-        zoomEl.value = camera.zoom;
+        zoomEl.value = 3001 - zoomToSlider(camera.zoom);
       }
     }
 

@@ -31,8 +31,15 @@ camera.focusTarget = initialFocus;
 camera.zoom = initialZoom;
 camera.showOrbits = showOrbits;
 
+// Helper function to convert zoom to slider value (inverse exponential)
+const zoomToSlider = (zoomValue) => {
+  const min = 1;
+  const max = 3000;
+  return 1 + 2999 * (Math.log(zoomValue / min) / Math.log(max / min));
+};
+
 // Update UI controls to match
-document.getElementById("zoom").value = initialZoom;
+document.getElementById("zoom").value = 3001 - zoomToSlider(initialZoom);
 document.getElementById("focus-select").value = initialFocus;
 document.getElementById("show-orbits").checked = showOrbits;
 document.getElementById("time-scale").value = initialTimeScale;

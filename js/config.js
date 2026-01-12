@@ -151,6 +151,13 @@ export const config = {
       inclination: 2.49,
       moons: [
         {
+          name: "Pan",
+          radius: 0.12,
+          color: [0.8, 0.8, 0.75],
+          orbitRadius: 14.7,
+          orbitSpeed: -1842,
+        },
+        {
           name: "Mimas",
           radius: 0.2,
           color: [0.75, 0.75, 0.75],

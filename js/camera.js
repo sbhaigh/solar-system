@@ -27,10 +27,29 @@ export class Camera {
     }
 
     // UI Controls - only set up if elements exist (v2.0)
+    // Helper function to convert linear slider to exponential zoom
+    const sliderToZoom = (sliderValue) => {
+      // Convert 1-3000 slider to exponential zoom range 1-3000
+      // Using exponential scale: zoom = min * (max/min)^(t)
+      // where t = (sliderValue - 1) / (3000 - 1)
+      const min = 1;
+      const max = 3000;
+      const t = (sliderValue - 1) / 2999;
+      return min * Math.pow(max / min, t);
+    };
+
+    const zoomToSlider = (zoomValue) => {
+      // Inverse: slider = 1 + (3000-1) * log(zoom/min) / log(max/min)
+      const min = 1;
+      const max = 3000;
+      return 1 + 2999 * (Math.log(zoomValue / min) / Math.log(max / min));
+    };
+
     const zoomEl = document.getElementById("zoom");
     if (zoomEl) {
       zoomEl.addEventListener("input", (e) => {
-        this.zoom = parseFloat(e.target.value);
+        const sliderValue = 3001 - parseFloat(e.target.value);
+        this.zoom = sliderToZoom(sliderValue);
       });
     }
 
@@ -180,7 +199,7 @@ export class Camera {
       this.zoom += e.deltaY * zoomSpeed;
       this.zoom = Math.max(1, Math.min(3000, this.zoom));
       const zoomEl = document.getElementById("zoom");
-      if (zoomEl) zoomEl.value = this.zoom;
+      if (zoomEl) zoomEl.value = 3001 - zoomToSlider(this.zoom);
     });
 
     // Touch controls
@@ -251,7 +270,7 @@ export class Camera {
           this.zoom += zoomDelta * zoomSpeed;
           this.zoom = Math.max(1, Math.min(3000, this.zoom));
           const zoomEl = document.getElementById("zoom");
-          if (zoomEl) zoomEl.value = this.zoom;
+          if (zoomEl) zoomEl.value = 3001 - zoomToSlider(this.zoom);
         }
 
         // Two-finger pan
