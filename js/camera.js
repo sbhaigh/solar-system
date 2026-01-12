@@ -52,7 +52,13 @@ export class Camera {
     if (focusEl) {
       focusEl.addEventListener("change", (e) => {
         const value = e.target.value;
-        const newFocus = value.startsWith("moon-") ? value : parseInt(value);
+        // Check if value is a moon (starts with "moon-") or a number
+        let newFocus;
+        if (typeof value === "string" && value.indexOf("moon-") === 0) {
+          newFocus = value;
+        } else {
+          newFocus = parseInt(value, 10);
+        }
         // Trigger camera transition callback if it exists
         if (this.onFocusChange) {
           this.onFocusChange(newFocus);
