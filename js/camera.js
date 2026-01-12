@@ -16,6 +16,16 @@ export class Camera {
   setupControls(canvas) {
     const mouseState = { isDragging: false, lastX: 0, lastY: 0, button: -1 };
 
+    // Hamburger menu toggle
+    const menuToggle = document.getElementById("menu-toggle");
+    const controls = document.getElementById("controls");
+    if (menuToggle && controls) {
+      menuToggle.addEventListener("click", () => {
+        menuToggle.classList.toggle("active");
+        controls.classList.toggle("visible");
+      });
+    }
+
     // UI Controls - only set up if elements exist (v2.0)
     const zoomEl = document.getElementById("zoom");
     if (zoomEl) {
@@ -162,7 +172,120 @@ export class Camera {
       const zoomSpeed = 0.1;
       this.zoom += e.deltaY * zoomSpeed;
       this.zoom = Math.max(1, Math.min(3000, this.zoom));
-      document.getElementById("zoom").value = this.zoom;
+      const zoomEl = document.getElementById("zoom");
+      if (zoomEl) zoomEl.value = this.zoom;
+    });
+
+    // Touch controls
+    const touchState = {
+      touches: [],
+      lastDistance: 0,
+      lastX: 0,
+      lastY: 0,
+      isTwoFingerGesture: false,
+    };
+
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      touchState.touches = Array.from(e.touches);
+
+      if (touchState.touches.length === 1) {
+        touchState.lastX = touchState.touches[0].clientX;
+        touchState.lastY = touchState.touches[0].clientY;
+        touchState.isTwoFingerGesture = false;
+      } else if (touchState.touches.length === 2) {
+        // Two-finger gesture for pinch-zoom or pan
+        const dx =
+          touchState.touches[0].clientX - touchState.touches[1].clientX;
+        const dy =
+          touchState.touches[0].clientY - touchState.touches[1].clientY;
+        touchState.lastDistance = Math.sqrt(dx * dx + dy * dy);
+        touchState.lastX =
+          (touchState.touches[0].clientX + touchState.touches[1].clientX) / 2;
+        touchState.lastY =
+          (touchState.touches[0].clientY + touchState.touches[1].clientY) / 2;
+        touchState.isTwoFingerGesture = true;
+      }
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      touchState.touches = Array.from(e.touches);
+
+      if (touchState.touches.length === 1 && !touchState.isTwoFingerGesture) {
+        // Single finger - rotate camera
+        const deltaX = touchState.touches[0].clientX - touchState.lastX;
+        const deltaY = touchState.touches[0].clientY - touchState.lastY;
+
+        const rotateSpeed = 0.5;
+        this.angle += deltaX * rotateSpeed;
+        this.height -= deltaY * rotateSpeed;
+        this.height = Math.max(-90, Math.min(90, this.height));
+
+        const angleEl = document.getElementById("camera-angle");
+        const heightEl = document.getElementById("camera-height");
+        if (angleEl) angleEl.value = this.angle % 360;
+        if (heightEl) heightEl.value = this.height;
+
+        touchState.lastX = touchState.touches[0].clientX;
+        touchState.lastY = touchState.touches[0].clientY;
+      } else if (touchState.touches.length === 2) {
+        // Two fingers - pinch to zoom and pan
+        const dx =
+          touchState.touches[0].clientX - touchState.touches[1].clientX;
+        const dy =
+          touchState.touches[0].clientY - touchState.touches[1].clientY;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // Pinch to zoom
+        if (touchState.lastDistance > 0) {
+          const zoomDelta = touchState.lastDistance - currentDistance;
+          const zoomSpeed = 2.0;
+          this.zoom += zoomDelta * zoomSpeed;
+          this.zoom = Math.max(1, Math.min(3000, this.zoom));
+          const zoomEl = document.getElementById("zoom");
+          if (zoomEl) zoomEl.value = this.zoom;
+        }
+
+        // Two-finger pan
+        const centerX =
+          (touchState.touches[0].clientX + touchState.touches[1].clientX) / 2;
+        const centerY =
+          (touchState.touches[0].clientY + touchState.touches[1].clientY) / 2;
+        const panDeltaX = centerX - touchState.lastX;
+        const panDeltaY = centerY - touchState.lastY;
+
+        const panSpeed = 0.1;
+        this.panX += panDeltaX * panSpeed;
+        this.panZ += panDeltaY * panSpeed;
+
+        touchState.lastDistance = currentDistance;
+        touchState.lastX = centerX;
+        touchState.lastY = centerY;
+      }
+    });
+
+    canvas.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      touchState.touches = Array.from(e.touches);
+
+      if (touchState.touches.length === 0) {
+        touchState.lastDistance = 0;
+        touchState.isTwoFingerGesture = false;
+      } else if (touchState.touches.length === 1) {
+        // Switched from two fingers to one
+        touchState.lastX = touchState.touches[0].clientX;
+        touchState.lastY = touchState.touches[0].clientY;
+        touchState.lastDistance = 0;
+        touchState.isTwoFingerGesture = false;
+      }
+    });
+
+    canvas.addEventListener("touchcancel", (e) => {
+      e.preventDefault();
+      touchState.touches = [];
+      touchState.lastDistance = 0;
+      touchState.isTwoFingerGesture = false;
     });
   }
 }
