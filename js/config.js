@@ -268,6 +268,7 @@ export const config = {
           color: [0.8, 0.85, 0.9],
           orbitRadius: 15,
           orbitSpeed: 60, // Positive for retrograde orbit
+          orbitalTilt: 157, // Highly inclined retrograde orbit
         },
         {
           name: "Proteus",
