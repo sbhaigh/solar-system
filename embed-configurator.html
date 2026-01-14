@@ -274,7 +274,7 @@
                 id="zoomSlider"
                 min="1"
                 max="3000"
-                value="800"
+                value="2200"
               />
             </label>
           </div>
@@ -362,8 +362,9 @@
         }
 
         const zoom = zoomSlider.value;
-        if (zoom !== "800") {
-          params.set("zoom", zoom);
+        const reversedZoom = 3001 - parseInt(zoom); // Reverse slider: left=3000 (out), right=1 (in)
+        if (reversedZoom !== 800) {
+          params.set("zoom", reversedZoom);
         }
 
         const timeScale = timeScaleSlider.value;
@@ -390,7 +391,8 @@
 
       // Update value displays
       zoomSlider.addEventListener("input", (e) => {
-        zoomValue.textContent = e.target.value;
+        const reversedZoom = 3001 - parseInt(e.target.value);
+        zoomValue.textContent = reversedZoom;
         updateEmbed();
       });
 
