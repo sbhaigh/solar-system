@@ -36,15 +36,12 @@ export function project3DTo2D(x, y, z, viewMatrix, projectionMatrix, canvas) {
   };
 }
 
-export function renderOrbitPath(gl, shaderProgram, orbitBuffer) {
+export function renderOrbitPath(gl, shaderProgram, uniforms, orbitBuffer) {
   const modelMatrix = mat4.create();
-  const modelLoc = gl.getUniformLocation(shaderProgram, "uModelMatrix");
-  const colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
-  const emissiveLoc = gl.getUniformLocation(shaderProgram, "uEmissive");
 
-  gl.uniformMatrix4fv(modelLoc, false, modelMatrix);
-  gl.uniform3fv(colorLoc, [0.5, 0.5, 0.5]);
-  gl.uniform1i(emissiveLoc, true);
+  gl.uniformMatrix4fv(uniforms.model, false, modelMatrix);
+  gl.uniform3fv(uniforms.color, [0.5, 0.5, 0.5]);
+  gl.uniform1i(uniforms.emissive, true);
 
   // Disable vertex attributes that orbit paths don't use
   const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
@@ -66,11 +63,14 @@ export function renderOrbitPath(gl, shaderProgram, orbitBuffer) {
 export function renderRing(
   gl,
   shaderProgram,
+  uniforms,
+  attribs,
   ring,
   position,
   axialTilt,
   rotationAngle,
-  texture
+  texture,
+  ringBuffer
 ) {
   const modelMatrix = mat4.create();
   modelMatrix[12] = position[0];
@@ -105,45 +105,34 @@ export function renderRing(
     modelMatrix[10] = scale;
   }
 
-  const modelLoc = gl.getUniformLocation(shaderProgram, "uModelMatrix");
-  const colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
-  const lightPosLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");
-  const emissiveLoc = gl.getUniformLocation(shaderProgram, "uEmissive");
+  gl.uniformMatrix4fv(uniforms.model, false, modelMatrix);
+  gl.uniform3fv(uniforms.color, ring.color);
+  gl.uniform3fv(uniforms.lightPos, [0, 0, 0]);
+  gl.uniform1i(uniforms.emissive, false);
 
-  gl.uniformMatrix4fv(modelLoc, false, modelMatrix);
-  gl.uniform3fv(colorLoc, ring.color);
-  gl.uniform3fv(lightPosLoc, [0, 0, 0]);
-  gl.uniform1i(emissiveLoc, false);
-
-  const ringBuffer = createRing(gl, innerRatio, 1.0, 64);
+  // Use pre-created ring buffer
   gl.bindBuffer(gl.ARRAY_BUFFER, ringBuffer.position);
-  const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
-  gl.enableVertexAttribArray(positionLoc);
-  gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribs.position);
+  gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ringBuffer.normal);
-  const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
-  gl.enableVertexAttribArray(normalLoc);
-  gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribs.normal);
+  gl.vertexAttribPointer(attribs.normal, 3, gl.FLOAT, false, 0, 0);
 
   // Texture support
-  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
-  if (texCoordLoc !== -1) {
+  if (attribs.texCoord !== -1) {
     gl.bindBuffer(gl.ARRAY_BUFFER, ringBuffer.texCoord);
-    gl.enableVertexAttribArray(texCoordLoc);
-    gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(attribs.texCoord);
+    gl.vertexAttribPointer(attribs.texCoord, 2, gl.FLOAT, false, 0, 0);
   }
-
-  const useTextureLoc = gl.getUniformLocation(shaderProgram, "uUseTexture");
-  const textureLoc = gl.getUniformLocation(shaderProgram, "uTexture");
 
   if (texture) {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(textureLoc, 0);
-    gl.uniform1i(useTextureLoc, 1);
+    gl.uniform1i(uniforms.texture, 0);
+    gl.uniform1i(uniforms.useTexture, 1);
   } else {
-    gl.uniform1i(useTextureLoc, 0);
+    gl.uniform1i(uniforms.useTexture, 0);
   }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ringBuffer.indices);
@@ -153,6 +142,8 @@ export function renderRing(
 export function renderSphere(
   gl,
   shaderProgram,
+  uniforms,
+  attribs,
   sphereBuffers,
   object,
   position,
@@ -208,130 +199,93 @@ export function renderSphere(
     object.radius,
   ]);
 
-  const modelLoc = gl.getUniformLocation(shaderProgram, "uModelMatrix");
-  const colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
-  const lightPosLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");
-  const emissiveLoc = gl.getUniformLocation(shaderProgram, "uEmissive");
-  const moonPosLoc = gl.getUniformLocation(shaderProgram, "uMoonPosition");
-  const moonRadiusLoc = gl.getUniformLocation(shaderProgram, "uMoonRadius");
-  const checkShadowLoc = gl.getUniformLocation(shaderProgram, "uCheckShadow");
-
-  gl.uniformMatrix4fv(modelLoc, false, modelMatrix);
-  gl.uniform3fv(colorLoc, object.color);
-  gl.uniform3fv(lightPosLoc, [0, 0, 0]);
-  gl.uniform1i(emissiveLoc, object.emissive || false);
-
-  // Set time uniform for sun spots
-  const timeLoc = gl.getUniformLocation(shaderProgram, "uTime");
-  gl.uniform1f(timeLoc, time || 0);
-
-  // Day/night terminator (only for Earth)
-  const showTerminatorLoc = gl.getUniformLocation(
-    shaderProgram,
-    "uShowTerminator"
-  );
-  gl.uniform1i(showTerminatorLoc, object.name === "Earth");
+  gl.uniformMatrix4fv(uniforms.model, false, modelMatrix);
+  gl.uniform3fv(uniforms.color, object.color);
+  gl.uniform3fv(uniforms.lightPos, [0, 0, 0]);
+  gl.uniform1i(uniforms.emissive, object.emissive || false);
+  gl.uniform1f(uniforms.time, time || 0);
+  gl.uniform1i(uniforms.showTerminator, object.name === "Earth");
 
   if (moonPos && moonRadius) {
-    gl.uniform3fv(moonPosLoc, moonPos);
-    gl.uniform1f(moonRadiusLoc, moonRadius);
-    gl.uniform1i(checkShadowLoc, true);
+    gl.uniform3fv(uniforms.moonPos, moonPos);
+    gl.uniform1f(uniforms.moonRadius, moonRadius);
+    gl.uniform1i(uniforms.checkShadow, true);
   } else {
-    gl.uniform1i(checkShadowLoc, false);
+    gl.uniform1i(uniforms.checkShadow, false);
   }
 
   // Planet shadow on moon (lunar eclipse)
-  const planetPosLoc = gl.getUniformLocation(shaderProgram, "uPlanetPosition");
-  const planetRadiusLoc = gl.getUniformLocation(shaderProgram, "uPlanetRadius");
-  const checkPlanetShadowLoc = gl.getUniformLocation(
-    shaderProgram,
-    "uCheckPlanetShadow"
-  );
-
   if (planetPos && planetRadius) {
-    gl.uniform3fv(planetPosLoc, planetPos);
-    gl.uniform1f(planetRadiusLoc, planetRadius);
-    gl.uniform1i(checkPlanetShadowLoc, true);
+    gl.uniform3fv(uniforms.planetPos, planetPos);
+    gl.uniform1f(uniforms.planetRadius, planetRadius);
+    gl.uniform1i(uniforms.checkPlanetShadow, true);
   } else {
-    gl.uniform1i(checkPlanetShadowLoc, false);
+    gl.uniform1i(uniforms.checkPlanetShadow, false);
   }
 
   // Texture support
-  const useTextureLoc = gl.getUniformLocation(shaderProgram, "uUseTexture");
   if (texture) {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uTexture"), 0);
-    gl.uniform1i(useTextureLoc, true);
+    gl.uniform1i(uniforms.texture, 0);
+    gl.uniform1i(uniforms.useTexture, true);
   } else {
-    gl.uniform1i(useTextureLoc, false);
+    gl.uniform1i(uniforms.useTexture, false);
   }
 
   // Cloud texture support (for Earth)
-  const useCloudsLoc = gl.getUniformLocation(shaderProgram, "uUseClouds");
-  const cloudRotationLoc = gl.getUniformLocation(
-    shaderProgram,
-    "uCloudRotation"
-  );
-
   if (cloudTexture && object.name === "Earth") {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, cloudTexture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uCloudTexture"), 1);
-    gl.uniform1i(useCloudsLoc, 1);
-    gl.uniform1f(cloudRotationLoc, cloudRotation || 0.0);
+    gl.uniform1i(uniforms.cloudTexture, 1);
+    gl.uniform1i(uniforms.useClouds, 1);
+    gl.uniform1f(uniforms.cloudRotation, cloudRotation || 0.0);
   } else {
-    gl.uniform1i(useCloudsLoc, 0);
-    gl.uniform1f(cloudRotationLoc, 0.0);
+    gl.uniform1i(uniforms.useClouds, 0);
+    gl.uniform1f(uniforms.cloudRotation, 0.0);
   }
 
   // Specular map support (for Earth)
-  const useSpecularLoc = gl.getUniformLocation(shaderProgram, "uUseSpecular");
   if (specularTexture && object.name === "Earth") {
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, specularTexture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSpecularMap"), 2);
-    gl.uniform1i(useSpecularLoc, 1);
+    gl.uniform1i(uniforms.specularMap, 2);
+    gl.uniform1i(uniforms.useSpecular, 1);
   } else {
-    gl.uniform1i(useSpecularLoc, 0);
+    gl.uniform1i(uniforms.useSpecular, 0);
   }
 
   // Normal map support (for Earth)
-  const useNormalLoc = gl.getUniformLocation(shaderProgram, "uUseNormal");
   if (normalTexture && object.name === "Earth") {
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, normalTexture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uNormalMap"), 3);
-    gl.uniform1i(useNormalLoc, 1);
+    gl.uniform1i(uniforms.normalMap, 3);
+    gl.uniform1i(uniforms.useNormal, 1);
   } else {
-    gl.uniform1i(useNormalLoc, 0);
+    gl.uniform1i(uniforms.useNormal, 0);
   }
 
   // Night map support (for Earth)
-  const useNightLoc = gl.getUniformLocation(shaderProgram, "uUseNight");
   if (nightTexture && object.name === "Earth") {
     gl.activeTexture(gl.TEXTURE4);
     gl.bindTexture(gl.TEXTURE_2D, nightTexture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uNightMap"), 4);
-    gl.uniform1i(useNightLoc, 1);
+    gl.uniform1i(uniforms.nightMap, 4);
+    gl.uniform1i(uniforms.useNight, 1);
   } else {
-    gl.uniform1i(useNightLoc, 0);
+    gl.uniform1i(uniforms.useNight, 0);
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
-  const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
-  gl.enableVertexAttribArray(positionLoc);
-  gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribs.position);
+  gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.normal);
-  const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
-  gl.enableVertexAttribArray(normalLoc);
-  gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribs.normal);
+  gl.vertexAttribPointer(attribs.normal, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.texCoord);
-  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
-  gl.enableVertexAttribArray(texCoordLoc);
-  gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(attribs.texCoord);
+  gl.vertexAttribPointer(attribs.texCoord, 2, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
   gl.drawElements(gl.TRIANGLES, sphereBuffers.indexCount, gl.UNSIGNED_SHORT, 0);

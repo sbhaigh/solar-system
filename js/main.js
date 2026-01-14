@@ -64,6 +64,68 @@ window.addEventListener("load", function () {
     particleFragmentShaderSource
   );
 
+  // Cache uniform and attribute locations for main shader
+  const mainUniforms = {
+    projection: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
+    view: gl.getUniformLocation(shaderProgram, "uViewMatrix"),
+    model: gl.getUniformLocation(shaderProgram, "uModelMatrix"),
+    color: gl.getUniformLocation(shaderProgram, "uColor"),
+    lightPos: gl.getUniformLocation(shaderProgram, "uLightPosition"),
+    emissive: gl.getUniformLocation(shaderProgram, "uEmissive"),
+    moonPos: gl.getUniformLocation(shaderProgram, "uMoonPosition"),
+    moonRadius: gl.getUniformLocation(shaderProgram, "uMoonRadius"),
+    checkShadow: gl.getUniformLocation(shaderProgram, "uCheckShadow"),
+    useTexture: gl.getUniformLocation(shaderProgram, "uUseTexture"),
+    texture: gl.getUniformLocation(shaderProgram, "uTexture"),
+    showTerminator: gl.getUniformLocation(shaderProgram, "uShowTerminator"),
+    useClouds: gl.getUniformLocation(shaderProgram, "uUseClouds"),
+    cloudTexture: gl.getUniformLocation(shaderProgram, "uCloudTexture"),
+    cloudRotation: gl.getUniformLocation(shaderProgram, "uCloudRotation"),
+    useSpecular: gl.getUniformLocation(shaderProgram, "uUseSpecular"),
+    specularMap: gl.getUniformLocation(shaderProgram, "uSpecularMap"),
+    useNormal: gl.getUniformLocation(shaderProgram, "uUseNormal"),
+    normalMap: gl.getUniformLocation(shaderProgram, "uNormalMap"),
+    useNight: gl.getUniformLocation(shaderProgram, "uUseNight"),
+    nightMap: gl.getUniformLocation(shaderProgram, "uNightMap"),
+    time: gl.getUniformLocation(shaderProgram, "uTime"),
+    planetPos: gl.getUniformLocation(shaderProgram, "uPlanetPosition"),
+    planetRadius: gl.getUniformLocation(shaderProgram, "uPlanetRadius"),
+    checkPlanetShadow: gl.getUniformLocation(
+      shaderProgram,
+      "uCheckPlanetShadow"
+    ),
+  };
+  const mainAttribs = {
+    position: gl.getAttribLocation(shaderProgram, "aPosition"),
+    normal: gl.getAttribLocation(shaderProgram, "aNormal"),
+    texCoord: gl.getAttribLocation(shaderProgram, "aTexCoord"),
+  };
+
+  // Cache uniform and attribute locations for point shader
+  const pointUniforms = {
+    projection: gl.getUniformLocation(pointShaderProgram, "uProjectionMatrix"),
+    view: gl.getUniformLocation(pointShaderProgram, "uViewMatrix"),
+    color: gl.getUniformLocation(pointShaderProgram, "uColor"),
+    pointSize: gl.getUniformLocation(pointShaderProgram, "uPointSize"),
+  };
+  const pointAttribs = {
+    position: gl.getAttribLocation(pointShaderProgram, "aPosition"),
+  };
+
+  // Cache uniform and attribute locations for particle shader
+  const particleUniforms = {
+    projection: gl.getUniformLocation(
+      particleShaderProgram,
+      "uProjectionMatrix"
+    ),
+    view: gl.getUniformLocation(particleShaderProgram, "uViewMatrix"),
+  };
+  const particleAttribs = {
+    position: gl.getAttribLocation(particleShaderProgram, "aPosition"),
+    size: gl.getAttribLocation(particleShaderProgram, "aSize"),
+    alpha: gl.getAttribLocation(particleShaderProgram, "aAlpha"),
+  };
+
   // Create geometry buffers
   const sphereBuffers = createSphere(gl, 1, 32, 32);
   const orbitBuffers = config.planets.map((planet) =>
@@ -75,6 +137,28 @@ window.addEventListener("load", function () {
       planet.inclination
     )
   );
+
+  // Pre-create ring geometry buffers (one per planet with rings)
+  const ringBuffersCache = new Map();
+  config.planets.forEach((planet, planetIndex) => {
+    if (planet.hasRings && planet.rings) {
+      const planetRingBuffers = planet.rings.map((ring) => {
+        const innerRatio = ring.inner / ring.outer;
+        return createRing(gl, innerRatio, 1.0, 64);
+      });
+      ringBuffersCache.set(planetIndex, planetRingBuffers);
+    }
+  });
+
+  // Matrix pool for reuse (avoid allocations)
+  const matrixPool = {
+    model: mat4.create(),
+    temp: mat4.create(),
+    combined: mat4.create(),
+    spotTranslate: mat4.create(),
+    withSpotPos: mat4.create(),
+    orientMatrix: mat4.create(),
+  };
 
   // Generate asteroid belt data
   const asteroidData = [];
@@ -105,6 +189,13 @@ window.addEventListener("load", function () {
   const cmeParticles = [];
   const maxParticles = 200;
   let nextCMETime = Math.random() * 5 + 3; // First CME in 3-8 seconds
+
+  // Pre-create reusable buffers for CME particles (performance optimization)
+  const cmeBuffers = {
+    position: gl.createBuffer(),
+    size: gl.createBuffer(),
+    alpha: gl.createBuffer(),
+  };
 
   function spawnCME() {
     // Spawn particles from random point on sun surface
@@ -329,7 +420,9 @@ window.addEventListener("load", function () {
 
       // First get planet position
       const planetPos = calculateFocusPosition(planetIndex, time);
-      const rotationAngle = time * planet.rotationSpeed * 0.1;
+      const rotationAngle = planet.rotationSpeed
+        ? time * planet.rotationSpeed
+        : 0;
       const moonAngle = time * moon.orbitSpeed * 0.1;
 
       let moonX, moonY, moonZ;
@@ -539,6 +632,9 @@ window.addEventListener("load", function () {
       5000
     );
 
+    // Set projection and view matrices once (cached uniforms)
+    gl.uniformMatrix4fv(mainUniforms.projection, false, projectionMatrix);
+
     // Calculate focus target position
     let focusX = camera.panX;
     let focusY = camera.panY;
@@ -619,41 +715,21 @@ window.addEventListener("load", function () {
       [0, 1, 0]
     );
 
-    const projectionLoc = gl.getUniformLocation(
-      shaderProgram,
-      "uProjectionMatrix"
-    );
-    const viewLoc = gl.getUniformLocation(shaderProgram, "uViewMatrix");
-    gl.uniformMatrix4fv(projectionLoc, false, projectionMatrix);
-    gl.uniformMatrix4fv(viewLoc, false, viewMatrix);
+    gl.uniformMatrix4fv(mainUniforms.view, false, viewMatrix);
 
     // Render orbit paths
     if (camera.showOrbits) {
       orbitBuffers.forEach((orbitBuffer) => {
-        renderOrbitPath(gl, shaderProgram, orbitBuffer);
+        renderOrbitPath(gl, shaderProgram, mainUniforms, orbitBuffer);
       });
     }
 
     // Render asteroid belt
     gl.useProgram(pointShaderProgram);
-    const pointProjectionLoc = gl.getUniformLocation(
-      pointShaderProgram,
-      "uProjectionMatrix"
-    );
-    const pointViewLoc = gl.getUniformLocation(
-      pointShaderProgram,
-      "uViewMatrix"
-    );
-    const pointColorLoc = gl.getUniformLocation(pointShaderProgram, "uColor");
-    const pointSizeLoc = gl.getUniformLocation(
-      pointShaderProgram,
-      "uPointSize"
-    );
-
-    gl.uniformMatrix4fv(pointProjectionLoc, false, projectionMatrix);
-    gl.uniformMatrix4fv(pointViewLoc, false, viewMatrix);
-    gl.uniform3fv(pointColorLoc, config.asteroidBelt.color);
-    gl.uniform1f(pointSizeLoc, 2.0);
+    gl.uniformMatrix4fv(pointUniforms.projection, false, projectionMatrix);
+    gl.uniformMatrix4fv(pointUniforms.view, false, viewMatrix);
+    gl.uniform3fv(pointUniforms.color, config.asteroidBelt.color);
+    gl.uniform1f(pointUniforms.pointSize, 2.0);
 
     const asteroidPositions = [];
     asteroidData.forEach((asteroid) => {
@@ -672,17 +748,13 @@ window.addEventListener("load", function () {
       gl.DYNAMIC_DRAW
     );
 
-    const pointPositionLoc = gl.getAttribLocation(
-      pointShaderProgram,
-      "aPosition"
-    );
-    gl.enableVertexAttribArray(pointPositionLoc);
-    gl.vertexAttribPointer(pointPositionLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(pointAttribs.position);
+    gl.vertexAttribPointer(pointAttribs.position, 3, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.POINTS, 0, config.asteroidBelt.count);
 
     // Render Kuiper Belt
-    gl.uniform3fv(pointColorLoc, config.kuiperBelt.color);
-    gl.uniform1f(pointSizeLoc, 2.5);
+    gl.uniform3fv(pointUniforms.color, config.kuiperBelt.color);
+    gl.uniform1f(pointUniforms.pointSize, 2.5);
 
     const kuiperPositions = [];
     kuiperData.forEach((object) => {
@@ -700,14 +772,12 @@ window.addEventListener("load", function () {
       new Float32Array(kuiperPositions),
       gl.DYNAMIC_DRAW
     );
-    gl.enableVertexAttribArray(pointPositionLoc);
-    gl.vertexAttribPointer(pointPositionLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(pointAttribs.position);
+    gl.vertexAttribPointer(pointAttribs.position, 3, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.POINTS, 0, config.kuiperBelt.count);
 
-    // Switch back to main shader
+    // Switch back to main shader (matrices already set)
     gl.useProgram(shaderProgram);
-    gl.uniformMatrix4fv(projectionLoc, false, projectionMatrix);
-    gl.uniformMatrix4fv(viewLoc, false, viewMatrix);
 
     // Update Sun label
     const sunScreenPos = project3DTo2D(
@@ -735,6 +805,8 @@ window.addEventListener("load", function () {
     renderSphere(
       gl,
       shaderProgram,
+      mainUniforms,
+      mainAttribs,
       sphereBuffers,
       config.sun,
       [0, 0, 0],
@@ -804,6 +876,11 @@ window.addEventListener("load", function () {
         label.style.display = "none";
       }
 
+      // Calculate rotation angle first (needed for moon shadow calculation and rings)
+      const rotationAngle = planet.rotationSpeed
+        ? accumulatedTime * planet.rotationSpeed
+        : 0;
+
       // Calculate moon position for shadow
       let moonPosition = null;
       let moonRadius = null;
@@ -825,20 +902,30 @@ window.addEventListener("load", function () {
           moonZ = z + baseZ;
         } else if (planet.axialTilt !== undefined) {
           // Align moon orbit with planet's equatorial plane
-          // Orbital plane is tilted but doesn't rotate with planet spin
+          // Use same transformation as rings (equatorial plane rotates with planet)
           const tiltRad = (planet.axialTilt * Math.PI) / 180;
           const cosTilt = Math.cos(tiltRad);
           const sinTilt = Math.sin(tiltRad);
+          const cosRot = Math.cos(rotationAngle);
+          const sinRot = Math.sin(rotationAngle);
 
           // Calculate position in orbital plane
           const localX = moon.orbitRadius * Math.cos(moonAngle);
           const localY = 0;
           const localZ = moon.orbitRadius * Math.sin(moonAngle);
 
-          // Apply only axial tilt (not planet rotation)
-          moonX = x + localX;
-          moonY = y + localY * cosTilt - localZ * sinTilt;
-          moonZ = z + localY * sinTilt + localZ * cosTilt;
+          // Apply same transformation as rings
+          moonX = x + localX * cosRot + localZ * sinRot;
+          moonY =
+            y +
+            localX * sinRot * sinTilt +
+            localY * cosTilt -
+            localZ * cosRot * sinTilt;
+          moonZ =
+            z -
+            localX * sinRot * cosTilt +
+            localY * sinTilt +
+            localZ * cosRot * cosTilt;
         } else {
           // Default: orbit in horizontal plane
           moonX = x + moon.orbitRadius * Math.cos(moonAngle);
@@ -850,9 +937,6 @@ window.addEventListener("load", function () {
         moonRadius = moon.radius;
       }
 
-      const rotationAngle = planet.rotationSpeed
-        ? accumulatedTime * planet.rotationSpeed
-        : 0;
       const planetTexture = textures[planet.name] || null;
       const cloudTexture =
         planet.name === "Earth" ? textures.earthClouds : null;
@@ -869,6 +953,8 @@ window.addEventListener("load", function () {
       renderSphere(
         gl,
         shaderProgram,
+        mainUniforms,
+        mainAttribs,
         sphereBuffers,
         planet,
         [x, y, z],
@@ -905,7 +991,9 @@ window.addEventListener("load", function () {
           -Math.sin(latRad) * Math.sin(lonRad),
         ];
 
-        const modelMatrix = mat4.create();
+        // Reuse matrix from pool
+        const modelMatrix = matrixPool.model;
+        for (let i = 0; i < 16; i++) modelMatrix[i] = i % 5 === 0 ? 1 : 0;
         modelMatrix[12] = x;
         modelMatrix[13] = y;
         modelMatrix[14] = z;
@@ -917,7 +1005,8 @@ window.addEventListener("load", function () {
           const cosRot = Math.cos(rotationAngle);
           const sinRot = Math.sin(rotationAngle);
 
-          const tempMatrix = mat4.create();
+          const tempMatrix = matrixPool.temp;
+          for (let i = 0; i < 16; i++) tempMatrix[i] = i % 5 === 0 ? 1 : 0;
           tempMatrix[0] = cosRot;
           tempMatrix[2] = sinRot;
           tempMatrix[4] = sinRot * sinTilt;
@@ -927,7 +1016,7 @@ window.addEventListener("load", function () {
           tempMatrix[9] = sinTilt;
           tempMatrix[10] = cosRot * cosTilt;
 
-          const combined = mat4.create();
+          const combined = matrixPool.combined;
           for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
               combined[i + j * 4] = 0;
@@ -940,12 +1029,13 @@ window.addEventListener("load", function () {
           for (let i = 0; i < 16; i++) modelMatrix[i] = combined[i];
         }
 
-        const spotTranslate = mat4.create();
+        const spotTranslate = matrixPool.spotTranslate;
+        for (let i = 0; i < 16; i++) spotTranslate[i] = i % 5 === 0 ? 1 : 0;
         spotTranslate[12] = localX * planet.radius * 1.001;
         spotTranslate[13] = localY * planet.radius * 1.001;
         spotTranslate[14] = localZ * planet.radius * 1.001;
 
-        const withSpotPos = mat4.create();
+        const withSpotPos = matrixPool.withSpotPos;
         for (let i = 0; i < 4; i++) {
           for (let j = 0; j < 4; j++) {
             withSpotPos[i + j * 4] = 0;
@@ -956,7 +1046,8 @@ window.addEventListener("load", function () {
           }
         }
 
-        const orientMatrix = mat4.create();
+        const orientMatrix = matrixPool.orientMatrix;
+        for (let i = 0; i < 16; i++) orientMatrix[i] = i % 5 === 0 ? 1 : 0;
         orientMatrix[0] = tangentLon[0];
         orientMatrix[1] = tangentLon[1];
         orientMatrix[2] = tangentLon[2];
@@ -984,33 +1075,19 @@ window.addEventListener("load", function () {
           0.01,
         ]);
 
-        const modelLoc = gl.getUniformLocation(shaderProgram, "uModelMatrix");
-        const colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
-        const lightPosLoc = gl.getUniformLocation(
-          shaderProgram,
-          "uLightPosition"
-        );
-        const emissiveLoc = gl.getUniformLocation(shaderProgram, "uEmissive");
-        const checkShadowLoc = gl.getUniformLocation(
-          shaderProgram,
-          "uCheckShadow"
-        );
-
-        gl.uniformMatrix4fv(modelLoc, false, withOrientation);
-        gl.uniform3fv(colorLoc, spot.color);
-        gl.uniform3fv(lightPosLoc, [0, 0, 0]);
-        gl.uniform1i(emissiveLoc, false);
-        gl.uniform1i(checkShadowLoc, false);
+        gl.uniformMatrix4fv(mainUniforms.model, false, withOrientation);
+        gl.uniform3fv(mainUniforms.color, spot.color);
+        gl.uniform3fv(mainUniforms.lightPos, [0, 0, 0]);
+        gl.uniform1i(mainUniforms.emissive, false);
+        gl.uniform1i(mainUniforms.checkShadow, false);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
-        const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
-        gl.enableVertexAttribArray(positionLoc);
-        gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(mainAttribs.position);
+        gl.vertexAttribPointer(mainAttribs.position, 3, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.normal);
-        const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
-        gl.enableVertexAttribArray(normalLoc);
-        gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(mainAttribs.normal);
+        gl.vertexAttribPointer(mainAttribs.normal, 3, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
         gl.drawElements(
@@ -1113,6 +1190,8 @@ window.addEventListener("load", function () {
           renderSphere(
             gl,
             shaderProgram,
+            mainUniforms,
+            mainAttribs,
             sphereBuffers,
             moon,
             [moonX, moonY, moonZ],
@@ -1137,15 +1216,19 @@ window.addEventListener("load", function () {
       if (planet.hasRings && planet.rings) {
         const ringTexture =
           planet.name === "Saturn" ? textures.saturnRing : null;
-        planet.rings.forEach((ring) => {
+        const cachedRingBuffers = ringBuffersCache.get(index);
+        planet.rings.forEach((ring, ringIndex) => {
           renderRing(
             gl,
             shaderProgram,
+            mainUniforms,
+            mainAttribs,
             ring,
             [x, y, z],
             planet.axialTilt,
             rotationAngle,
-            ringTexture
+            ringTexture,
+            cachedRingBuffers[ringIndex]
           );
         });
       }
@@ -1167,18 +1250,10 @@ window.addEventListener("load", function () {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive blending
       gl.depthMask(false); // Don't write to depth buffer
 
-      const particleProjectionLoc = gl.getUniformLocation(
-        particleShaderProgram,
-        "uProjectionMatrix"
-      );
-      const particleViewLoc = gl.getUniformLocation(
-        particleShaderProgram,
-        "uViewMatrix"
-      );
-      gl.uniformMatrix4fv(particleProjectionLoc, false, projectionMatrix);
-      gl.uniformMatrix4fv(particleViewLoc, false, viewMatrix);
+      gl.uniformMatrix4fv(particleUniforms.projection, false, projectionMatrix);
+      gl.uniformMatrix4fv(particleUniforms.view, false, viewMatrix);
 
-      // Create buffers for particle data
+      // Prepare particle data arrays
       const positions = [];
       const sizes = [];
       const alphas = [];
@@ -1189,37 +1264,34 @@ window.addEventListener("load", function () {
         alphas.push(p.life);
       });
 
-      const posBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+      // Reuse buffers - just update data
+      gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.position);
       gl.bufferData(
         gl.ARRAY_BUFFER,
         new Float32Array(positions),
         gl.DYNAMIC_DRAW
       );
-      const posLoc = gl.getAttribLocation(particleShaderProgram, "aPosition");
-      gl.enableVertexAttribArray(posLoc);
-      gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(particleAttribs.position);
+      gl.vertexAttribPointer(
+        particleAttribs.position,
+        3,
+        gl.FLOAT,
+        false,
+        0,
+        0
+      );
 
-      const sizeBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer);
+      gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.size);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sizes), gl.DYNAMIC_DRAW);
-      const sizeLoc = gl.getAttribLocation(particleShaderProgram, "aSize");
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(particleAttribs.size);
+      gl.vertexAttribPointer(particleAttribs.size, 1, gl.FLOAT, false, 0, 0);
 
-      const alphaBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, alphaBuffer);
+      gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.alpha);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(alphas), gl.DYNAMIC_DRAW);
-      const alphaLoc = gl.getAttribLocation(particleShaderProgram, "aAlpha");
-      gl.enableVertexAttribArray(alphaLoc);
-      gl.vertexAttribPointer(alphaLoc, 1, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(particleAttribs.alpha);
+      gl.vertexAttribPointer(particleAttribs.alpha, 1, gl.FLOAT, false, 0, 0);
 
       gl.drawArrays(gl.POINTS, 0, cmeParticles.length);
-
-      // Cleanup
-      gl.deleteBuffer(posBuffer);
-      gl.deleteBuffer(sizeBuffer);
-      gl.deleteBuffer(alphaBuffer);
 
       gl.depthMask(true);
       gl.disable(gl.BLEND);
