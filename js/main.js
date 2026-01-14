@@ -20,7 +20,19 @@ import {
 } from "./renderer.js";
 import { loadTextures } from "./utils/textures.js";
 
-// Validate and sanitize URL parameters
+/**
+ * Validates and sanitizes URL parameters for embed mode
+ * @param {URLSearchParams} urlParams - URL parameters to validate
+ * @returns {Object} Object containing validated parameters
+ * @property {number|null} zoom - Camera zoom level (1-3000)
+ * @property {number|string|null} focus - Focus target index or moon identifier
+ * @property {number|null} timeScale - Time scale multiplier (0-100)
+ * @property {string} [controls] - Controls visibility setting
+ * @property {string} [instructions] - Instructions visibility setting
+ * @property {string} [labels] - Labels visibility setting
+ * @property {string} [orbits] - Orbit lines visibility setting
+ * @property {string} [performance] - Performance monitor visibility setting
+ */
 function validateURLParams(urlParams) {
   const validated = {};
 
@@ -306,6 +318,10 @@ window.addEventListener("load", function () {
     alpha: gl.createBuffer(),
   };
 
+  /**
+   * Spawns a Coronal Mass Ejection particle burst from the sun's surface
+   * Creates 20-50 particles ejected from a random point on the sun
+   */
   function spawnCME() {
     // Spawn particles from random point on sun surface
     const theta = Math.random() * Math.PI * 2;
@@ -341,6 +357,10 @@ window.addEventListener("load", function () {
     }
   }
 
+  /**
+   * Updates positions and lifecycle of all active CME particles
+   * @param {number} deltaTime - Time elapsed since last frame (seconds)
+   */
   function updateCMEParticles(deltaTime) {
     // Update existing particles
     for (let i = cmeParticles.length - 1; i >= 0; i--) {
@@ -464,7 +484,11 @@ window.addEventListener("load", function () {
     }
   });
 
-  // Helper function to convert zoom to slider value (inverse exponential)
+  /**
+   * Converts exponential zoom value to linear slider position
+   * @param {number} zoomValue - Camera zoom distance (1-3000)
+   * @returns {number} Slider position (1-3000)
+   */
   const zoomToSlider = (zoomValue) => {
     const min = 1;
     const max = 3000;
@@ -535,6 +559,10 @@ window.addEventListener("load", function () {
     perfDiv.style.display = "none";
   }
 
+  /**
+   * Updates the performance monitor display with FPS, frame time, and memory stats
+   * @param {number} currentTime - Current animation time in seconds
+   */
   function updatePerfMonitor(currentTime) {
     perfMonitor.frames++;
     const elapsed = currentTime - perfMonitor.lastUpdate;
@@ -583,7 +611,12 @@ window.addEventListener("load", function () {
     duration: 1.5, // seconds
   };
 
-  // Helper function to calculate position of a focus target
+  /**
+   * Calculates the 3D position of a focus target (sun, planet, or moon)
+   * @param {number|string} focusIndex - Index of focus target (-1=sun, 0-7=planets, "moon-p-m"=moon)
+   * @param {number} time - Current accumulated animation time
+   * @returns {{x: number, y: number, z: number}} 3D position coordinates
+   */
   function calculateFocusPosition(focusIndex, time) {
     if (focusIndex === -1) {
       // Sun at origin
@@ -678,7 +711,10 @@ window.addEventListener("load", function () {
     return { x: camera.panX, y: camera.panY, z: camera.panZ };
   }
 
-  // Function to start camera transition to a planet
+  /**
+   * Initiates smooth camera transition to focus on a specific celestial body
+   * @param {number|string} planetIndex - Target index (-1=sun, 0-7=planets, "moon-p-m"=moon)
+   */
   function transitionToPlanet(planetIndex) {
     // Calculate appropriate zoom based on object size
     let targetRadius;

@@ -178,3 +178,22 @@ This project uses **ES6 modules** for clean code organization:
 - **Shader conditionals**: Features only active when needed (Earth-specific effects)
 
 Built with **pure JavaScript and WebGL** - no frameworks, no dependencies, just modern web standards.
+
+## Credits
+
+### Textures
+
+Planetary textures provided by [Solar System Scope](https://www.solarsystemscope.com/textures/) and are licensed under [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+
+**Attribution**: Solar System Scope (https://www.solarsystemscope.com/textures/)
+
+### Code
+
+Application code by Steve Haigh, licensed under the MIT License.
+
+## License
+
+This project contains:
+
+- **Application code**: MIT License (see [LICENSE](LICENSE) file)
+- **Texture files**: CC BY 4.0 License (see credits above)

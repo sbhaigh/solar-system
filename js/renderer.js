@@ -1,7 +1,16 @@
-// WebGL rendering functions
 import { mat4 } from "./utils/math.js";
 import { createRing } from "./geometry.js";
 
+/**
+ * Projects a 3D world position to 2D screen coordinates
+ * @param {number} x - World X coordinate
+ * @param {number} y - World Y coordinate
+ * @param {number} z - World Z coordinate
+ * @param {Float32Array} viewMatrix - Camera view matrix
+ * @param {Float32Array} projectionMatrix - Projection matrix
+ * @param {HTMLCanvasElement} canvas - WebGL canvas element
+ * @returns {{x: number, y: number, z: number, visible: boolean}} Screen position and visibility
+ */
 export function project3DTo2D(x, y, z, viewMatrix, projectionMatrix, canvas) {
   const worldPos = [x, y, z, 1];
   const viewPos = [0, 0, 0, 0];
@@ -36,6 +45,13 @@ export function project3DTo2D(x, y, z, viewMatrix, projectionMatrix, canvas) {
   };
 }
 
+/**
+ * Renders an orbital path as a line loop
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {WebGLProgram} shaderProgram - Active shader program
+ * @param {Object} uniforms - Cached uniform locations
+ * @param {Object} orbitBuffer - Orbit path vertex buffer
+ */
 export function renderOrbitPath(gl, shaderProgram, uniforms, orbitBuffer) {
   const modelMatrix = mat4.create();
 
@@ -60,6 +76,19 @@ export function renderOrbitPath(gl, shaderProgram, uniforms, orbitBuffer) {
   gl.drawArrays(gl.LINE_LOOP, 0, orbitBuffer.vertexCount);
 }
 
+/**
+ * Renders a planetary ring system (e.g., Saturn's rings)
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {WebGLProgram} shaderProgram - Active shader program
+ * @param {Object} uniforms - Cached uniform locations
+ * @param {Object} attribs - Cached attribute locations
+ * @param {Object} ring - Ring configuration (inner/outer radius, color)
+ * @param {number[]} position - Planet position [x, y, z]
+ * @param {number} axialTilt - Planet's axial tilt in degrees
+ * @param {number} rotationAngle - Current rotation angle in radians
+ * @param {WebGLTexture} texture - Optional ring texture
+ * @param {Object} ringBuffer - Pre-created ring geometry buffers
+ */
 export function renderRing(
   gl,
   shaderProgram,
@@ -139,6 +168,29 @@ export function renderRing(
   gl.drawElements(gl.TRIANGLES, ringBuffer.indexCount, gl.UNSIGNED_SHORT, 0);
 }
 
+/**
+ * Renders a celestial body (sun, planet, or moon) as a textured sphere
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {WebGLProgram} shaderProgram - Active shader program
+ * @param {Object} uniforms - Cached uniform locations
+ * @param {Object} attribs - Cached attribute locations
+ * @param {Object} sphereBuffers - Sphere geometry buffers (position, normal, texCoord, indices)
+ * @param {Object} object - Celestial body configuration (radius, color, emissive, etc.)
+ * @param {number[]} position - World position [x, y, z]
+ * @param {number[]|null} moonPos - Moon position for shadow calculation (or null)
+ * @param {number|null} moonRadius - Moon radius for shadow calculation (or null)
+ * @param {number} axialTilt - Axial tilt in degrees
+ * @param {number} rotationAngle - Current rotation angle in radians
+ * @param {WebGLTexture|null} texture - Surface texture
+ * @param {WebGLTexture|null} cloudTexture - Cloud layer texture (Earth only)
+ * @param {number} cloudRotation - Cloud rotation offset (0-1)
+ * @param {WebGLTexture|null} specularTexture - Specular/reflectivity map (Earth only)
+ * @param {WebGLTexture|null} normalTexture - Normal map for terrain detail (Earth only)
+ * @param {WebGLTexture|null} nightTexture - Night lights texture (Earth only)
+ * @param {number[]|null} planetPos - Parent planet position for lunar eclipse (or null)
+ * @param {number|null} planetRadius - Parent planet radius for lunar eclipse (or null)
+ * @param {number} time - Current animation time for effects
+ */
 export function renderSphere(
   gl,
   shaderProgram,

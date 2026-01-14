@@ -1,18 +1,39 @@
 // Camera state and controls
 
+/**
+ * Camera class managing view position, zoom, and user controls
+ * @class
+ */
 export class Camera {
+  /**
+   * Creates a new Camera instance with default settings
+   * @constructor
+   */
   constructor() {
+    /** @type {number} Camera distance from focus point (1-3000) */
     this.zoom = 800;
+    /** @type {number} Horizontal rotation angle in degrees */
     this.angle = 0;
+    /** @type {number} Vertical pitch angle in degrees (-90 to 90) */
     this.height = 20;
+    /** @type {number} Pan offset on X axis */
     this.panX = 0;
+    /** @type {number} Pan offset on Y axis */
     this.panY = 0;
+    /** @type {number} Pan offset on Z axis */
     this.panZ = 0;
+    /** @type {number|string} Currently focused celestial body (-1=sun, 0-7=planets, "moon-p-m"=moon) */
     this.focusTarget = -1;
+    /** @type {boolean} Whether to render orbital paths */
     this.showOrbits = true;
+    /** @type {number} Time scale multiplier for animation speed */
     this.timeScale = 1.0;
   }
 
+  /**
+   * Sets up mouse, touch, and UI controls for camera manipulation
+   * @param {HTMLCanvasElement} canvas - WebGL canvas element to attach event listeners to
+   */
   setupControls(canvas) {
     const mouseState = { isDragging: false, lastX: 0, lastY: 0, button: -1 };
 

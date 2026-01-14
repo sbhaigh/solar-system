@@ -1,5 +1,12 @@
 // Texture loading utilities
 
+/**
+ * Loads a WebGL texture from an image URL with progress tracking
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {string} url - Image file URL
+ * @param {Function} [onProgress] - Optional callback fired when texture loads
+ * @returns {WebGLTexture} WebGL texture object (initially 1x1 gray pixel until image loads)
+ */
 export function loadTexture(gl, url, onProgress) {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -49,6 +56,12 @@ function isPowerOf2(value) {
   return (value & (value - 1)) === 0;
 }
 
+/**
+ * Loads all textures for the solar system with progress UI
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {Object} config - Solar system configuration object
+ * @returns {Object} Object containing all loaded WebGL textures keyed by name
+ */
 export function loadTextures(gl, config) {
   const textures = {};
 

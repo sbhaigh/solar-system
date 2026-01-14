@@ -1,11 +1,26 @@
 # Planet Textures
 
-Add planet texture images to this folder. Recommended sources:
+## Attribution
 
-## NASA/Solar System Scope Textures
+The textures in this project are from [Solar System Scope](https://www.solarsystemscope.com/textures/) and are licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
-- Download from: https://www.solarsystemscope.com/textures/
-- Or NASA: https://planetpixelemporium.com/planets.html
+**Required Attribution**: Solar System Scope (https://www.solarsystemscope.com/textures/)
+
+### License Summary
+
+You are free to:
+
+- **Share** — copy and redistribute the textures
+- **Adapt** — remix, transform, and build upon the textures
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit to Solar System Scope
+
+## Texture Sources
+
+- Primary source: https://www.solarsystemscope.com/textures/
+- Alternative: https://planetpixelemporium.com/planets.html (NASA)
 
 ## Required Files (2K resolution recommended):
 

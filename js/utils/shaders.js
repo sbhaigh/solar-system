@@ -271,6 +271,13 @@ export const particleFragmentShaderSource = `
     }
 `;
 
+/**
+ * Compiles and links a WebGL shader program from vertex and fragment source
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {string} vertexSource - GLSL vertex shader source code
+ * @param {string} fragmentSource - GLSL fragment shader source code
+ * @returns {WebGLProgram|null} Compiled shader program or null on error
+ */
 export function createShaderProgram(gl, vertexSource, fragmentSource) {
   const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
   const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);

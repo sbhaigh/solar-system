@@ -1,5 +1,13 @@
 // WebGL geometry creation functions
 
+/**
+ * Creates WebGL buffers for a UV sphere geometry
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {number} radius - Sphere radius
+ * @param {number} latitudeBands - Number of horizontal divisions
+ * @param {number} longitudeBands - Number of vertical divisions
+ * @returns {{position: WebGLBuffer, normal: WebGLBuffer, texCoord: WebGLBuffer, indices: WebGLBuffer, indexCount: number}}
+ */
 export function createSphere(gl, radius, latitudeBands, longitudeBands) {
   const positions = [],
     normals = [],
@@ -62,6 +70,14 @@ export function createSphere(gl, radius, latitudeBands, longitudeBands) {
   };
 }
 
+/**
+ * Creates WebGL buffers for a flat ring geometry (e.g., Saturn's rings)
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {number} innerRadius - Inner radius as fraction of outer radius (0-1)
+ * @param {number} outerRadius - Outer radius (typically 1.0, scaled by model matrix)
+ * @param {number} segments - Number of radial segments
+ * @returns {{position: WebGLBuffer, normal: WebGLBuffer, texCoord: WebGLBuffer, indices: WebGLBuffer, indexCount: number}}
+ */
 export function createRing(gl, innerRadius, outerRadius, segments) {
   const positions = [],
     normals = [],
@@ -117,6 +133,15 @@ export function createRing(gl, innerRadius, outerRadius, segments) {
   };
 }
 
+/**
+ * Creates WebGL buffer for an elliptical orbit path with inclination
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {number} radius - Semi-major axis length
+ * @param {number} segments - Number of line segments
+ * @param {number} eccentricity - Orbital eccentricity (0 = circular)
+ * @param {number} inclination - Orbital plane tilt in degrees
+ * @returns {{position: WebGLBuffer, vertexCount: number}}
+ */
 export function createOrbitPath(
   gl,
   radius,
