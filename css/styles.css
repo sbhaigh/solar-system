@@ -280,3 +280,28 @@ body {
     padding: 8px;
   }
 }
+
+/* Fix #8: Tablet-specific styles (between mobile and desktop) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #controls {
+    max-width: 280px;
+  }
+}
+
+/* Fix #8: Performance monitor responsive sizing */
+@media (max-width: 768px) {
+  #performance-monitor {
+    font-size: 10px;
+    padding: 6px 10px;
+    min-width: 100px;
+  }
+}
+
+/* High DPI / Retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .planet-label {
+    /* Sharper text on high DPI */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

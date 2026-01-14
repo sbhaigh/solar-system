@@ -311,6 +311,13 @@ window.addEventListener("load", function () {
   const maxParticles = 200;
   let nextCMETime = Math.random() * 5 + 3; // First CME in 3-8 seconds
 
+  // Fix #5: Pre-allocate typed arrays to reduce GC pressure
+  const cmePreallocated = {
+    positions: new Float32Array(maxParticles * 3),
+    sizes: new Float32Array(maxParticles),
+    alphas: new Float32Array(maxParticles),
+  };
+
   // Pre-create reusable buffers for CME particles (performance optimization)
   const cmeBuffers = {
     position: gl.createBuffer(),
@@ -559,6 +566,13 @@ window.addEventListener("load", function () {
     perfDiv.style.display = "none";
   }
 
+  // Fix #6: Cache DOM references (avoid repeated getElementById calls)
+  const perfDOMCache = {
+    fps: document.getElementById("perf-fps"),
+    ms: document.getElementById("perf-ms"),
+    mem: document.getElementById("perf-mem"),
+  };
+
   /**
    * Updates the performance monitor display with FPS, frame time, and memory stats
    * @param {number} currentTime - Current animation time in seconds
@@ -577,16 +591,16 @@ window.addEventListener("load", function () {
         perfMonitor.frameTimes.length;
       perfMonitor.frameTime = avgFrameTime.toFixed(2);
 
-      // Update display
-      document.getElementById("perf-fps").textContent = perfMonitor.fps;
-      document.getElementById("perf-ms").textContent = perfMonitor.frameTime;
+      // Update display using cached DOM references
+      perfDOMCache.fps.textContent = perfMonitor.fps;
+      perfDOMCache.ms.textContent = perfMonitor.frameTime;
 
       // Memory info (if available)
       if (performance.memory) {
         const memMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
-        document.getElementById("perf-mem").textContent = memMB + " MB";
+        perfDOMCache.mem.textContent = memMB + " MB";
       } else {
-        document.getElementById("perf-mem").textContent = "N/A";
+        perfDOMCache.mem.textContent = "N/A";
       }
 
       perfMonitor.frames = 0;
@@ -810,6 +824,9 @@ window.addEventListener("load", function () {
     const deltaTime = time - lastFrameTime;
     lastFrameTime = time;
     accumulatedTime += deltaTime * camera.timeScale;
+
+    // Fix #7: Update camera for smooth movement
+    camera.update();
 
     // Update camera transition
     if (cameraTransition.active) {
@@ -1471,22 +1488,23 @@ window.addEventListener("load", function () {
       gl.uniformMatrix4fv(particleUniforms.projection, false, projectionMatrix);
       gl.uniformMatrix4fv(particleUniforms.view, false, viewMatrix);
 
-      // Prepare particle data arrays
-      const positions = [];
-      const sizes = [];
-      const alphas = [];
-
-      cmeParticles.forEach((p) => {
-        positions.push(p.x, p.y, p.z);
-        sizes.push(p.size);
-        alphas.push(p.life);
-      });
+      // Fix #5: Use pre-allocated arrays (no GC allocations)
+      const count = cmeParticles.length;
+      for (let i = 0; i < count; i++) {
+        const p = cmeParticles[i];
+        const idx = i * 3;
+        cmePreallocated.positions[idx] = p.x;
+        cmePreallocated.positions[idx + 1] = p.y;
+        cmePreallocated.positions[idx + 2] = p.z;
+        cmePreallocated.sizes[i] = p.size;
+        cmePreallocated.alphas[i] = p.life;
+      }
 
       // Reuse buffers - just update data
       gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.position);
       gl.bufferData(
         gl.ARRAY_BUFFER,
-        new Float32Array(positions),
+        cmePreallocated.positions.subarray(0, count * 3),
         gl.DYNAMIC_DRAW
       );
       gl.enableVertexAttribArray(particleAttribs.position);
@@ -1500,12 +1518,20 @@ window.addEventListener("load", function () {
       );
 
       gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.size);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sizes), gl.DYNAMIC_DRAW);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        cmePreallocated.sizes.subarray(0, count),
+        gl.DYNAMIC_DRAW
+      );
       gl.enableVertexAttribArray(particleAttribs.size);
       gl.vertexAttribPointer(particleAttribs.size, 1, gl.FLOAT, false, 0, 0);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, cmeBuffers.alpha);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(alphas), gl.DYNAMIC_DRAW);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        cmePreallocated.alphas.subarray(0, count),
+        gl.DYNAMIC_DRAW
+      );
       gl.enableVertexAttribArray(particleAttribs.alpha);
       gl.vertexAttribPointer(particleAttribs.alpha, 1, gl.FLOAT, false, 0, 0);
 

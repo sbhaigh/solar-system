@@ -28,6 +28,14 @@ export class Camera {
     this.showOrbits = true;
     /** @type {number} Time scale multiplier for animation speed */
     this.timeScale = 1.0;
+
+    // Fix #7: Camera smoothing with damping
+    /** @type {number} Target angle for smooth interpolation */
+    this.targetAngle = 0;
+    /** @type {number} Target height for smooth interpolation */
+    this.targetHeight = 20;
+    /** @type {number} Damping factor (0-1, lower = smoother) */
+    this.damping = 0.15;
   }
 
   /**
@@ -115,6 +123,10 @@ export class Camera {
       });
     }
 
+    // Fix #7: Initialize target values
+    this.targetAngle = this.angle;
+    this.targetHeight = this.height;
+
     const timeScaleEl = document.getElementById("time-scale");
     if (timeScaleEl) {
       timeScaleEl.addEventListener("input", (e) => {
@@ -185,13 +197,15 @@ export class Camera {
         const deltaY = e.clientY - mouseState.lastY;
 
         if (mouseState.button === 0) {
+          // Fix #7: Apply to target values, actual values interpolate smoothly
           const rotateSpeed = 0.5;
-          this.angle += deltaX * rotateSpeed;
-          this.height -= deltaY * rotateSpeed;
-          this.height = Math.max(-90, Math.min(90, this.height));
+          this.targetAngle += deltaX * rotateSpeed;
+          this.targetHeight -= deltaY * rotateSpeed;
+          this.targetHeight = Math.max(-90, Math.min(90, this.targetHeight));
 
-          document.getElementById("camera-angle").value = this.angle % 360;
-          document.getElementById("camera-height").value = this.height;
+          document.getElementById("camera-angle").value =
+            this.targetAngle % 360;
+          document.getElementById("camera-height").value = this.targetHeight;
         } else if (mouseState.button === 2) {
           const panSpeed = 0.1;
           this.panX += deltaX * panSpeed;
@@ -334,5 +348,15 @@ export class Camera {
       touchState.lastDistance = 0;
       touchState.isTwoFingerGesture = false;
     });
+  }
+
+  /**
+   * Updates camera position with smooth damping
+   * Call this every frame for smooth camera movement
+   */
+  update() {
+    // Fix #7: Smooth interpolation using damping
+    this.angle += (this.targetAngle - this.angle) * this.damping;
+    this.height += (this.targetHeight - this.height) * this.damping;
   }
 }

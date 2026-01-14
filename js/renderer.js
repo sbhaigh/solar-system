@@ -1,6 +1,48 @@
 import { mat4 } from "./utils/math.js";
 import { createRing } from "./geometry.js";
 
+// Fix #1 & #2: WebGL state cache to avoid redundant state changes
+const glStateCache = {
+  boundTextures: new Map(), // Track texture bindings per unit
+  lastEmissive: null,
+  lastUseTexture: null,
+  lastUseClouds: null,
+  lastUseSpecular: null,
+  lastUseNormal: null,
+  lastUseNight: null,
+  lastCheckShadow: null,
+  lastCheckPlanetShadow: null,
+};
+
+/**
+ * Binds a texture only if it's not already bound to the specified unit
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {number} unit - Texture unit (0-7)
+ * @param {WebGLTexture} texture - Texture to bind
+ */
+function bindTextureOptimized(gl, unit, texture) {
+  const cached = glStateCache.boundTextures.get(unit);
+  if (cached !== texture) {
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    glStateCache.boundTextures.set(unit, texture);
+  }
+}
+
+/**
+ * Sets a uniform only if the value has changed
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {WebGLUniformLocation} location - Uniform location
+ * @param {number} value - Boolean value (0 or 1)
+ * @param {string} cacheName - Cache key name
+ */
+function setUniform1iCached(gl, location, value, cacheName) {
+  if (glStateCache[cacheName] !== value) {
+    gl.uniform1i(location, value);
+    glStateCache[cacheName] = value;
+  }
+}
+
 /**
  * Projects a 3D world position to 2D screen coordinates
  * @param {number} x - World X coordinate
@@ -156,12 +198,11 @@ export function renderRing(
   }
 
   if (texture) {
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    bindTextureOptimized(gl, 0, texture);
     gl.uniform1i(uniforms.texture, 0);
-    gl.uniform1i(uniforms.useTexture, 1);
+    setUniform1iCached(gl, uniforms.useTexture, 1, "lastUseTexture");
   } else {
-    gl.uniform1i(uniforms.useTexture, 0);
+    setUniform1iCached(gl, uniforms.useTexture, 0, "lastUseTexture");
   }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ringBuffer.indices);
@@ -254,77 +295,83 @@ export function renderSphere(
   gl.uniformMatrix4fv(uniforms.model, false, modelMatrix);
   gl.uniform3fv(uniforms.color, object.color);
   gl.uniform3fv(uniforms.lightPos, [0, 0, 0]);
-  gl.uniform1i(uniforms.emissive, object.emissive || false);
+  const emissive = object.emissive || false;
+  setUniform1iCached(gl, uniforms.emissive, emissive ? 1 : 0, "lastEmissive");
   gl.uniform1f(uniforms.time, time || 0);
   gl.uniform1i(uniforms.showTerminator, object.name === "Earth");
 
   if (moonPos && moonRadius) {
     gl.uniform3fv(uniforms.moonPos, moonPos);
     gl.uniform1f(uniforms.moonRadius, moonRadius);
-    gl.uniform1i(uniforms.checkShadow, true);
+    setUniform1iCached(gl, uniforms.checkShadow, 1, "lastCheckShadow");
   } else {
-    gl.uniform1i(uniforms.checkShadow, false);
+    setUniform1iCached(gl, uniforms.checkShadow, 0, "lastCheckShadow");
   }
 
   // Planet shadow on moon (lunar eclipse)
   if (planetPos && planetRadius) {
     gl.uniform3fv(uniforms.planetPos, planetPos);
     gl.uniform1f(uniforms.planetRadius, planetRadius);
-    gl.uniform1i(uniforms.checkPlanetShadow, true);
+    setUniform1iCached(
+      gl,
+      uniforms.checkPlanetShadow,
+      1,
+      "lastCheckPlanetShadow"
+    );
   } else {
-    gl.uniform1i(uniforms.checkPlanetShadow, false);
+    setUniform1iCached(
+      gl,
+      uniforms.checkPlanetShadow,
+      0,
+      "lastCheckPlanetShadow"
+    );
   }
 
-  // Texture support
+  // Texture support with optimized binding
   if (texture) {
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    bindTextureOptimized(gl, 0, texture);
     gl.uniform1i(uniforms.texture, 0);
-    gl.uniform1i(uniforms.useTexture, true);
+    setUniform1iCached(gl, uniforms.useTexture, 1, "lastUseTexture");
   } else {
-    gl.uniform1i(uniforms.useTexture, false);
+    setUniform1iCached(gl, uniforms.useTexture, 0, "lastUseTexture");
   }
 
   // Cloud texture support (for Earth)
   if (cloudTexture && object.name === "Earth") {
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, cloudTexture);
+    bindTextureOptimized(gl, 1, cloudTexture);
     gl.uniform1i(uniforms.cloudTexture, 1);
-    gl.uniform1i(uniforms.useClouds, 1);
+    setUniform1iCached(gl, uniforms.useClouds, 1, "lastUseClouds");
     gl.uniform1f(uniforms.cloudRotation, cloudRotation || 0.0);
   } else {
-    gl.uniform1i(uniforms.useClouds, 0);
+    setUniform1iCached(gl, uniforms.useClouds, 0, "lastUseClouds");
     gl.uniform1f(uniforms.cloudRotation, 0.0);
   }
 
   // Specular map support (for Earth)
   if (specularTexture && object.name === "Earth") {
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, specularTexture);
+    bindTextureOptimized(gl, 2, specularTexture);
     gl.uniform1i(uniforms.specularMap, 2);
-    gl.uniform1i(uniforms.useSpecular, 1);
+    setUniform1iCached(gl, uniforms.useSpecular, 1, "lastUseSpecular");
   } else {
-    gl.uniform1i(uniforms.useSpecular, 0);
+    setUniform1iCached(gl, uniforms.useSpecular, 0, "lastUseSpecular");
   }
 
   // Normal map support (for Earth)
   if (normalTexture && object.name === "Earth") {
-    gl.activeTexture(gl.TEXTURE3);
-    gl.bindTexture(gl.TEXTURE_2D, normalTexture);
+    bindTextureOptimized(gl, 3, normalTexture);
     gl.uniform1i(uniforms.normalMap, 3);
-    gl.uniform1i(uniforms.useNormal, 1);
+    setUniform1iCached(gl, uniforms.useNormal, 1, "lastUseNormal");
   } else {
-    gl.uniform1i(uniforms.useNormal, 0);
+    setUniform1iCached(gl, uniforms.useNormal, 0, "lastUseNormal");
   }
 
   // Night map support (for Earth)
   if (nightTexture && object.name === "Earth") {
-    gl.activeTexture(gl.TEXTURE4);
-    gl.bindTexture(gl.TEXTURE_2D, nightTexture);
+    bindTextureOptimized(gl, 4, nightTexture);
     gl.uniform1i(uniforms.nightMap, 4);
-    gl.uniform1i(uniforms.useNight, 1);
+    setUniform1iCached(gl, uniforms.useNight, 1, "lastUseNight");
   } else {
-    gl.uniform1i(uniforms.useNight, 0);
+    setUniform1iCached(gl, uniforms.useNight, 0, "lastUseNight");
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
