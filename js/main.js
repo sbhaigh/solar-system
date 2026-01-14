@@ -20,15 +20,124 @@ import {
 } from "./renderer.js";
 import { loadTextures } from "./utils/textures.js";
 
+// Validate and sanitize URL parameters
+function validateURLParams(urlParams) {
+  const validated = {};
+
+  // Validate zoom (1-3000)
+  if (urlParams.has("zoom")) {
+    const zoom = parseFloat(urlParams.get("zoom"));
+    validated.zoom = !isNaN(zoom) && zoom >= 1 && zoom <= 3000 ? zoom : null;
+  }
+
+  // Validate focus (-1 to 7, or moon format)
+  if (urlParams.has("focus")) {
+    const focus = urlParams.get("focus");
+    if (focus.startsWith("moon-")) {
+      const parts = focus.split("-");
+      if (parts.length === 3) {
+        const pIndex = parseInt(parts[1]);
+        const mIndex = parseInt(parts[2]);
+        if (!isNaN(pIndex) && !isNaN(mIndex) && pIndex >= 0 && pIndex < 8) {
+          validated.focus = focus;
+        }
+      }
+    } else {
+      const focusNum = parseInt(focus);
+      validated.focus =
+        !isNaN(focusNum) && focusNum >= -1 && focusNum <= 7 ? focusNum : null;
+    }
+  }
+
+  // Validate timeScale (0-100)
+  if (urlParams.has("timeScale")) {
+    const timeScale = parseFloat(urlParams.get("timeScale"));
+    validated.timeScale =
+      !isNaN(timeScale) && timeScale >= 0 && timeScale <= 100
+        ? timeScale
+        : null;
+  }
+
+  // Validate boolean parameters
+  ["controls", "instructions", "labels", "orbits", "performance"].forEach(
+    (param) => {
+      if (urlParams.has(param)) {
+        validated[param] = urlParams.get(param);
+      }
+    }
+  );
+
+  return validated;
+}
+
 // Initialize WebGL and start application
 window.addEventListener("load", function () {
   const canvas = document.getElementById("webgl-canvas");
-  const gl = canvas.getContext("webgl");
+
+  // Feature detection: Check WebGL support
+  const gl =
+    canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
 
   if (!gl) {
-    alert("WebGL not supported");
+    // Show user-friendly fallback
+    const fallback = document.createElement("div");
+    fallback.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      max-width: 500px;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    `;
+    fallback.innerHTML = `
+      <h2 style="color: #ff6b6b; margin-bottom: 20px;">WebGL Not Supported</h2>
+      <p style="margin-bottom: 15px;">Your browser doesn't support WebGL, which is required to run this solar system simulation.</p>
+      <p style="font-size: 14px; color: #ccc;">Please try:</p>
+      <ul style="text-align: left; margin: 15px 0; color: #ccc;">
+        <li>Updating your browser to the latest version</li>
+        <li>Enabling hardware acceleration in browser settings</li>
+        <li>Using a modern browser like Chrome, Firefox, or Edge</li>
+      </ul>
+    `;
+    document.body.appendChild(fallback);
     return;
   }
+
+  // Handle WebGL context loss/restore
+  canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    console.warn("WebGL context lost");
+    // Show notification to user
+    const notice = document.createElement("div");
+    notice.id = "context-lost-notice";
+    notice.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 107, 107, 0.95);
+      color: #fff;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      z-index: 10000;
+    `;
+    notice.textContent = "Graphics context lost. Attempting to recover...";
+    document.body.appendChild(notice);
+  });
+
+  canvas.addEventListener("webglcontextrestored", () => {
+    console.warn("WebGL context restored, reloading page...");
+    const notice = document.getElementById("context-lost-notice");
+    if (notice) notice.remove();
+    // Reload page to reinitialize
+    window.location.reload();
+  });
 
   // Load textures
   const textures = loadTextures(gl, config);
@@ -252,21 +361,20 @@ window.addEventListener("load", function () {
 
   // Parse URL parameters
   const urlParams = new URLSearchParams(window.location.search);
-  console.log("URL params:", window.location.search);
-  console.log("controls param:", urlParams.get("controls"));
+  const validParams = validateURLParams(urlParams);
 
   // Apply URL parameters
-  if (urlParams.has("zoom")) {
-    camera.zoom = parseFloat(urlParams.get("zoom"));
+  if (validParams.zoom !== undefined && validParams.zoom !== null) {
+    camera.zoom = validParams.zoom;
   }
-  if (urlParams.has("focus")) {
-    camera.focusTarget = parseInt(urlParams.get("focus"));
+  if (validParams.focus !== undefined && validParams.focus !== null) {
+    camera.focusTarget = validParams.focus;
   }
 
   // Save timeScale from URL to reapply after setupControls
   let urlTimeScale = null;
-  if (urlParams.has("timeScale")) {
-    const sliderValue = parseFloat(urlParams.get("timeScale"));
+  if (validParams.timeScale !== undefined && validParams.timeScale !== null) {
+    const sliderValue = validParams.timeScale;
     // Use same logarithmic conversion as the slider
     const minSeconds = 0.01;
     const maxSeconds = 30;
@@ -278,13 +386,13 @@ window.addEventListener("load", function () {
     urlTimeScale = 62.83 / 365.25 / secondsPerDay;
   }
 
-  if (urlParams.has("orbits")) {
-    camera.showOrbits = urlParams.get("orbits") === "true";
+  if (validParams.orbits !== undefined) {
+    camera.showOrbits = validParams.orbits === "true";
   }
 
   // Handle label visibility
   const showLabels =
-    !urlParams.has("labels") || urlParams.get("labels") === "true";
+    validParams.labels === undefined || validParams.labels === "true";
 
   camera.setupControls(canvas);
 
@@ -294,7 +402,7 @@ window.addEventListener("load", function () {
   }
 
   // Handle control visibility (do this after setupControls)
-  if (urlParams.get("controls") === "hidden") {
+  if (validParams.controls === "hidden") {
     const controlPanel = document.getElementById("controls");
     if (controlPanel) {
       controlPanel.remove();
@@ -302,7 +410,7 @@ window.addEventListener("load", function () {
   }
 
   // Handle instructions visibility separately
-  if (urlParams.get("instructions") === "hidden") {
+  if (validParams.instructions === "hidden") {
     const instructionsPanel = document.getElementById("instructions");
     if (instructionsPanel) {
       instructionsPanel.remove();
@@ -385,6 +493,79 @@ window.addEventListener("load", function () {
   // Animation state
   let accumulatedTime = 0;
   let lastFrameTime = 0;
+
+  // Performance monitoring
+  const perfMonitor = {
+    fps: 0,
+    frameTime: 0,
+    frames: 0,
+    lastUpdate: 0,
+    frameTimes: [],
+    maxSamples: 60,
+  };
+
+  // Create performance overlay
+  const perfDiv = document.createElement("div");
+  perfDiv.id = "performance-monitor";
+  perfDiv.style.cssText = `
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #0f0;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    z-index: 9999;
+    pointer-events: none;
+    min-width: 120px;
+  `;
+  perfDiv.innerHTML = `
+    <div>FPS: <span id="perf-fps">--</span></div>
+    <div>MS: <span id="perf-ms">--</span></div>
+    <div>MEM: <span id="perf-mem">--</span></div>
+  `;
+  document.body.appendChild(perfDiv);
+
+  // Hide performance monitor by default (show with ?performance=true)
+  const showPerformance = validParams.performance === "true";
+  if (!showPerformance) {
+    perfDiv.style.display = "none";
+  }
+
+  function updatePerfMonitor(currentTime) {
+    perfMonitor.frames++;
+    const elapsed = currentTime - perfMonitor.lastUpdate;
+
+    // Update every 500ms
+    if (elapsed >= 0.5) {
+      perfMonitor.fps = Math.round(perfMonitor.frames / elapsed);
+
+      // Calculate average frame time
+      const avgFrameTime =
+        perfMonitor.frameTimes.reduce((a, b) => a + b, 0) /
+        perfMonitor.frameTimes.length;
+      perfMonitor.frameTime = avgFrameTime.toFixed(2);
+
+      // Update display
+      document.getElementById("perf-fps").textContent = perfMonitor.fps;
+      document.getElementById("perf-ms").textContent = perfMonitor.frameTime;
+
+      // Memory info (if available)
+      if (performance.memory) {
+        const memMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+        document.getElementById("perf-mem").textContent = memMB + " MB";
+      } else {
+        document.getElementById("perf-mem").textContent = "N/A";
+      }
+
+      perfMonitor.frames = 0;
+      perfMonitor.lastUpdate = currentTime;
+      perfMonitor.frameTimes = [];
+    }
+  }
 
   // Planet click tracking
   const planetScreenPositions = [];
@@ -587,6 +768,7 @@ window.addEventListener("load", function () {
   // Main render loop
   function render(time) {
     time *= 0.001;
+    const frameStart = performance.now();
 
     if (lastFrameTime === 0) lastFrameTime = time;
     const deltaTime = time - lastFrameTime;
@@ -1296,6 +1478,15 @@ window.addEventListener("load", function () {
       gl.depthMask(true);
       gl.disable(gl.BLEND);
     }
+
+    // Update performance metrics
+    const frameEnd = performance.now();
+    const frameTime = frameEnd - frameStart;
+    perfMonitor.frameTimes.push(frameTime);
+    if (perfMonitor.frameTimes.length > perfMonitor.maxSamples) {
+      perfMonitor.frameTimes.shift();
+    }
+    updatePerfMonitor(time);
 
     requestAnimationFrame(render);
   }

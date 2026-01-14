@@ -47,13 +47,4 @@ document.getElementById("time-scale").value = initialTimeScale;
 // Now load and run the main application
 import("./main.js").then((module) => {
   // Main.js will pick up the camera settings
-  console.log("Solar System Embed initialized with params:", {
-    showControls,
-    showInstructions,
-    showLabels,
-    initialFocus,
-    initialZoom,
-    initialTimeScale,
-    showOrbits,
-  });
 });

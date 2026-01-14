@@ -23,12 +23,13 @@ Customize the embedded visualization with URL parameters:
 
 ### Basic Parameters
 
-| Parameter      | Values            | Default | Description                |
-| -------------- | ----------------- | ------- | -------------------------- |
-| `controls`     | `hidden` / (omit) | visible | Hide/show control panel    |
-| `instructions` | `true` / `false`  | `false` | Show/hide instruction text |
-| `labels`       | `true` / `false`  | `true`  | Show/hide planet labels    |
-| `orbits`       | `true` / `false`  | `true`  | Show/hide orbit lines      |
+| Parameter      | Values            | Default | Description                         |
+| -------------- | ----------------- | ------- | ----------------------------------- |
+| `controls`     | `hidden` / (omit) | visible | Hide/show control panel             |
+| `instructions` | `true` / `false`  | `false` | Show/hide instruction text          |
+| `labels`       | `true` / `false`  | `true`  | Show/hide planet labels             |
+| `orbits`       | `true` / `false`  | `true`  | Show/hide orbit lines               |
+| `performance`  | `true` / `false`  | `false` | Show/hide performance monitor (FPS) |
 
 ### Camera Parameters
 
