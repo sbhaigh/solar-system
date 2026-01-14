@@ -279,6 +279,7 @@ window.addEventListener("load", function () {
     spotTranslate: mat4.create(),
     withSpotPos: mat4.create(),
     orientMatrix: mat4.create(),
+    withOrientation: mat4.create(), // Fix #4: Add pooled matrix for Great Red Spot
   };
 
   // Generate asteroid belt data
@@ -1293,7 +1294,8 @@ window.addEventListener("load", function () {
         orientMatrix[9] = localY;
         orientMatrix[10] = localZ;
 
-        const withOrientation = mat4.create();
+        // Fix #4: Reuse pooled matrix instead of creating new one
+        const withOrientation = matrixPool.withOrientation;
         for (let i = 0; i < 4; i++) {
           for (let j = 0; j < 4; j++) {
             withOrientation[i + j * 4] = 0;

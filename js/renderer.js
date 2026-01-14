@@ -1,6 +1,25 @@
 import { mat4 } from "./utils/math.js";
 import { createRing } from "./geometry.js";
 
+// Fix #4: Matrix pool for renderer (avoid allocations in hot paths)
+const matrixPool = {
+  model: mat4.create(),
+  temp: mat4.create(),
+  combined: mat4.create(),
+  identity: mat4.create(),
+};
+
+// Fix #3: Cache attribute locations to avoid repeated lookups
+const attribCache = new Map();
+
+function getAttribLocationCached(gl, program, name) {
+  const key = `${program}-${name}`;
+  if (!attribCache.has(key)) {
+    attribCache.set(key, gl.getAttribLocation(program, name));
+  }
+  return attribCache.get(key);
+}
+
 // Fix #1 & #2: WebGL state cache to avoid redundant state changes
 const glStateCache = {
   boundTextures: new Map(), // Track texture bindings per unit
@@ -95,15 +114,14 @@ export function project3DTo2D(x, y, z, viewMatrix, projectionMatrix, canvas) {
  * @param {Object} orbitBuffer - Orbit path vertex buffer
  */
 export function renderOrbitPath(gl, shaderProgram, uniforms, orbitBuffer) {
-  const modelMatrix = mat4.create();
-
-  gl.uniformMatrix4fv(uniforms.model, false, modelMatrix);
+  // Fix #4: Reuse pooled matrix (identity matrix for orbits)
+  gl.uniformMatrix4fv(uniforms.model, false, matrixPool.identity);
   gl.uniform3fv(uniforms.color, [0.5, 0.5, 0.5]);
   gl.uniform1i(uniforms.emissive, true);
 
-  // Disable vertex attributes that orbit paths don't use
-  const normalLoc = gl.getAttribLocation(shaderProgram, "aNormal");
-  const texCoordLoc = gl.getAttribLocation(shaderProgram, "aTexCoord");
+  // Fix #3: Use cached attribute locations
+  const normalLoc = getAttribLocationCached(gl, shaderProgram, "aNormal");
+  const texCoordLoc = getAttribLocationCached(gl, shaderProgram, "aTexCoord");
   if (normalLoc !== -1) {
     gl.disableVertexAttribArray(normalLoc);
   }
@@ -112,7 +130,7 @@ export function renderOrbitPath(gl, shaderProgram, uniforms, orbitBuffer) {
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, orbitBuffer.position);
-  const positionLoc = gl.getAttribLocation(shaderProgram, "aPosition");
+  const positionLoc = getAttribLocationCached(gl, shaderProgram, "aPosition");
   gl.enableVertexAttribArray(positionLoc);
   gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
   gl.drawArrays(gl.LINE_LOOP, 0, orbitBuffer.vertexCount);
@@ -143,7 +161,10 @@ export function renderRing(
   texture,
   ringBuffer
 ) {
-  const modelMatrix = mat4.create();
+  // Fix #4: Reuse pooled matrix
+  const modelMatrix = matrixPool.model;
+  // Reset to identity
+  for (let i = 0; i < 16; i++) modelMatrix[i] = i % 5 === 0 ? 1 : 0;
   modelMatrix[12] = position[0];
   modelMatrix[13] = position[1];
   modelMatrix[14] = position[2];
@@ -254,7 +275,10 @@ export function renderSphere(
   planetRadius,
   time
 ) {
-  const modelMatrix = mat4.create();
+  // Fix #4: Reuse pooled matrices
+  const modelMatrix = matrixPool.model;
+  // Reset to identity and translate
+  for (let i = 0; i < 16; i++) modelMatrix[i] = i % 5 === 0 ? 1 : 0;
   mat4.translate(modelMatrix, modelMatrix, position);
 
   if (axialTilt !== undefined && rotationAngle !== undefined) {
@@ -264,7 +288,9 @@ export function renderSphere(
     const cosRot = Math.cos(rotationAngle);
     const sinRot = Math.sin(rotationAngle);
 
-    const tempMatrix = mat4.create();
+    const tempMatrix = matrixPool.temp;
+    // Reset to identity
+    for (let i = 0; i < 16; i++) tempMatrix[i] = i % 5 === 0 ? 1 : 0;
     tempMatrix[0] = cosRot;
     tempMatrix[2] = sinRot;
     tempMatrix[4] = sinRot * sinTilt;
@@ -274,7 +300,7 @@ export function renderSphere(
     tempMatrix[9] = sinTilt;
     tempMatrix[10] = cosRot * cosTilt;
 
-    const combined = mat4.create();
+    const combined = matrixPool.combined;
     for (let i = 0; i < 4; i++) {
       for (let j = 0; j < 4; j++) {
         combined[i + j * 4] = 0;
