@@ -415,3 +415,71 @@ export function renderSphere(
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
   gl.drawElements(gl.TRIANGLES, sphereBuffers.indexCount, gl.UNSIGNED_SHORT, 0);
 }
+
+/**
+ * Renders instanced belt objects (asteroids/Kuiper) using ANGLE_instanced_arrays
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {Object} ext - ANGLE_instanced_arrays extension
+ * @param {WebGLProgram} shaderProgram - Active shader program
+ * @param {Object} uniforms - Cached uniform locations
+ * @param {Object} attribs - Cached attribute locations
+ * @param {Object} billboardBuffers - Billboard geometry buffers
+ * @param {WebGLBuffer} instanceBuffer - Instance position buffer
+ * @param {number} instanceCount - Number of instances to render
+ * @param {number[]} color - RGB color [r, g, b]
+ */
+export function renderInstancedBelt(
+  gl,
+  ext,
+  shaderProgram,
+  uniforms,
+  attribs,
+  billboardBuffers,
+  instanceBuffer,
+  instanceCount,
+  color
+) {
+  // Fix #4: Reuse pooled identity matrix
+  gl.uniformMatrix4fv(uniforms.model, false, matrixPool.identity);
+  gl.uniform3fv(uniforms.color, color);
+  gl.uniform1i(uniforms.emissive, true);
+
+  // Bind billboard geometry
+  gl.bindBuffer(gl.ARRAY_BUFFER, billboardBuffers.position);
+  gl.enableVertexAttribArray(attribs.position);
+  gl.vertexAttribPointer(attribs.position, 3, gl.FLOAT, false, 0, 0);
+
+  // Disable unused attributes
+  const normalLoc = getAttribLocationCached(gl, shaderProgram, "aNormal");
+  const texCoordLoc = getAttribLocationCached(gl, shaderProgram, "aTexCoord");
+  if (normalLoc !== -1) gl.disableVertexAttribArray(normalLoc);
+  if (texCoordLoc !== -1) gl.disableVertexAttribArray(texCoordLoc);
+
+  // Bind instance positions (per-instance attribute)
+  const instancePosLoc = getAttribLocationCached(
+    gl,
+    shaderProgram,
+    "aInstancePos"
+  );
+  if (instancePosLoc !== -1) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.enableVertexAttribArray(instancePosLoc);
+    gl.vertexAttribPointer(instancePosLoc, 3, gl.FLOAT, false, 0, 0);
+    ext.vertexAttribDivisorANGLE(instancePosLoc, 1); // One per instance
+  }
+
+  // Draw instanced
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, billboardBuffers.indices);
+  ext.drawElementsInstancedANGLE(
+    gl.TRIANGLES,
+    billboardBuffers.indexCount,
+    gl.UNSIGNED_SHORT,
+    0,
+    instanceCount
+  );
+
+  // Reset divisor
+  if (instancePosLoc !== -1) {
+    ext.vertexAttribDivisorANGLE(instancePosLoc, 0);
+  }
+}

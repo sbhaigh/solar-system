@@ -184,3 +184,55 @@ export function createOrbitPath(
     vertexCount: positions.length / 3,
   };
 }
+
+/**
+ * Creates a simple billboard quad for instanced rendering (asteroid/Kuiper belts)
+ * Each instance will be positioned via instance matrices
+ * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {number} size - Billboard size
+ * @returns {{position: WebGLBuffer, texCoord: WebGLBuffer, indices: WebGLBuffer, indexCount: number}}
+ */
+export function createBillboard(gl, size) {
+  const halfSize = size / 2;
+  const positions = [
+    -halfSize,
+    -halfSize,
+    0,
+    halfSize,
+    -halfSize,
+    0,
+    halfSize,
+    halfSize,
+    0,
+    -halfSize,
+    halfSize,
+    0,
+  ];
+
+  const texCoords = [0, 0, 1, 0, 1, 1, 0, 1];
+
+  const indices = [0, 1, 2, 0, 2, 3];
+
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+  const texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
+  const indexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(
+    gl.ELEMENT_ARRAY_BUFFER,
+    new Uint16Array(indices),
+    gl.STATIC_DRAW
+  );
+
+  return {
+    position: positionBuffer,
+    texCoord: texCoordBuffer,
+    indices: indexBuffer,
+    indexCount: indices.length,
+  };
+}
