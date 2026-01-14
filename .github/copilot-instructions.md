@@ -26,6 +26,7 @@ This is a **pure vanilla JavaScript WebGL application** with no build system or 
 ### Texture System
 
 Earth uses **multi-layer texturing** with 5 separate maps:
+
 - Base surface (`earth_2k.jpg`)
 - Cloud layer (`earth_clouds_2k.jpg`) - rotates 1.2x faster than surface
 - Specular map (`earth_spec_2k.jpg`) - defines ocean/ice reflectivity
@@ -37,6 +38,7 @@ When modifying Earth rendering in [renderer.js](../js/renderer.js) `renderSphere
 ### Shader Convention
 
 Fragment shaders in [utils/shaders.js](../js/utils/shaders.js) use **uniform flags** to enable features per-object:
+
 - `uEmissive` - self-illuminated (sun)
 - `uUseTexture` - apply texture vs solid color
 - `uCheckShadow` - moon shadow calculations (lunar eclipses)
@@ -47,6 +49,7 @@ Always check which uniforms are set in [renderer.js](../js/renderer.js) when deb
 ### Particle Systems
 
 Two distinct systems in [main.js](../js/main.js):
+
 1. **Static Belts** (asteroids, Kuiper): Generated once at init, stored in buffers, rendered as GL_POINTS
 2. **Dynamic CMEs**: Array of particle objects, updated each frame, spawned randomly every 5-13 seconds from sun surface
 
@@ -66,6 +69,7 @@ When adding celestial bodies, apply transformations in this order: orbital posit
 ### Running Locally
 
 **Must use a web server** (ES6 modules require HTTP protocol, not `file://`):
+
 ```bash
 # Using Python
 python3 -m http.server 8000
@@ -93,6 +97,7 @@ Then navigate to `http://localhost:8000`
 ## Embedding System
 
 Separate embed mode via [embed.html](../embed.html) + [js/embed-init.js](../js/embed-init.js):
+
 - URL parameters control visibility (`?controls=hidden&focus=2&zoom=50`)
 - See [EMBEDDING.md](../EMBEDDING.md) for complete parameter documentation
 - Embed initialization sets camera state before loading [main.js](../js/main.js)
