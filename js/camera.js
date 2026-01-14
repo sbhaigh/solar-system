@@ -278,15 +278,16 @@ export class Camera {
         const deltaX = touchState.touches[0].clientX - touchState.lastX;
         const deltaY = touchState.touches[0].clientY - touchState.lastY;
 
+        // Fix #7: Apply to target values for smooth interpolation
         const rotateSpeed = 0.5;
-        this.angle += deltaX * rotateSpeed;
-        this.height -= deltaY * rotateSpeed;
-        this.height = Math.max(-90, Math.min(90, this.height));
+        this.targetAngle += deltaX * rotateSpeed;
+        this.targetHeight -= deltaY * rotateSpeed;
+        this.targetHeight = Math.max(-90, Math.min(90, this.targetHeight));
 
         const angleEl = document.getElementById("camera-angle");
         const heightEl = document.getElementById("camera-height");
-        if (angleEl) angleEl.value = this.angle % 360;
-        if (heightEl) heightEl.value = this.height;
+        if (angleEl) angleEl.value = this.targetAngle % 360;
+        if (heightEl) heightEl.value = this.targetHeight;
 
         touchState.lastX = touchState.touches[0].clientX;
         touchState.lastY = touchState.touches[0].clientY;
