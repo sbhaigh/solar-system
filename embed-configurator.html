@@ -321,6 +321,35 @@
     </div>
 
     <script>
+      // Helper: Debounce function to limit rapid calls
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      // Helper: Reverse zoom slider value
+      function reverseZoom(sliderValue) {
+        return 3001 - parseInt(sliderValue);
+      }
+
+      // Helper: Copy text to clipboard and show feedback
+      function copyToClipboard(text, button) {
+        navigator.clipboard.writeText(text).then(() => {
+          const originalText = button.textContent;
+          button.textContent = "Copied!";
+          setTimeout(() => {
+            button.textContent = originalText;
+          }, 2000);
+        });
+      }
+
       const iframe = document.getElementById("embedFrame");
       const hideControls = document.getElementById("hideControls");
       const hideInstructions = document.getElementById("hideInstructions");
@@ -361,8 +390,7 @@
           params.set("focus", focus);
         }
 
-        const zoom = zoomSlider.value;
-        const reversedZoom = 3001 - parseInt(zoom); // Reverse slider: left=3000 (out), right=1 (in)
+        const reversedZoom = reverseZoom(zoomSlider.value);
         if (reversedZoom !== 800) {
           params.set("zoom", reversedZoom);
         }
@@ -370,15 +398,10 @@
         const timeScale = timeScaleSlider.value;
         params.set("timeScale", timeScale);
 
-        const url = `index.html${
-          params.toString() ? "?" + params.toString() : ""
-        }`;
+        const url = params.toString() ? `index.html?${params}` : 'index.html';
         
-        // Force iframe reload by setting src to empty first
-        iframe.src = "about:blank";
-        setTimeout(() => {
-          iframe.src = url;
-        }, 10);
+        // Update iframe directly (browser handles efficiently)
+        iframe.src = url;
         
         // Update URLs with full domain
         const fullUrl = `https://www.stevehaigh.net/solar-system/${url}`;
@@ -389,16 +412,19 @@
         embedCode.textContent = htmlCode;
       }
 
-      // Update value displays
+      // Debounced version for sliders (prevents lag during dragging)
+      const debouncedUpdateEmbed = debounce(updateEmbed, 200);
+
+      // Update value displays with debounced embed update
       zoomSlider.addEventListener("input", (e) => {
-        const reversedZoom = 3001 - parseInt(e.target.value);
+        const reversedZoom = reverseZoom(e.target.value);
         zoomValue.textContent = reversedZoom;
-        updateEmbed();
+        debouncedUpdateEmbed();
       });
 
       timeScaleSlider.addEventListener("input", (e) => {
         timeScaleValue.textContent = e.target.value;
-        updateEmbed();
+        debouncedUpdateEmbed();
       });
 
       // Update on any control change
@@ -408,28 +434,13 @@
       showOrbits.addEventListener("change", updateEmbed);
       focusTarget.addEventListener("change", updateEmbed);
 
-      // Copy URL to clipboard
+      // Copy buttons
       copyButton.addEventListener("click", () => {
-        const url = embedUrl.textContent;
-        navigator.clipboard.writeText(url).then(() => {
-          const originalText = copyButton.textContent;
-          copyButton.textContent = "Copied!";
-          setTimeout(() => {
-            copyButton.textContent = originalText;
-          }, 2000);
-        });
+        copyToClipboard(embedUrl.textContent, copyButton);
       });
 
-      // Copy HTML code to clipboard
       copyCodeButton.addEventListener("click", () => {
-        const code = embedCode.textContent;
-        navigator.clipboard.writeText(code).then(() => {
-          const originalText = copyCodeButton.textContent;
-          copyCodeButton.textContent = "Copied!";
-          setTimeout(() => {
-            copyCodeButton.textContent = originalText;
-          }, 2000);
-        });
+        copyToClipboard(embedCode.textContent, copyCodeButton);
       });
 
       // View configured solar system in new tab
@@ -438,7 +449,11 @@
         window.open(url, '_blank');
       });
 
-      // Initialize
+      // Initialize display values
+      zoomValue.textContent = reverseZoom(zoomSlider.value);
+      timeScaleValue.textContent = timeScaleSlider.value;
+      
+      // Initialize embed
       updateEmbed();
     </script>
   </body>
