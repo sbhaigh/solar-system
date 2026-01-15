@@ -86,6 +86,7 @@ export class Camera {
     if (angleEl) {
       angleEl.addEventListener("input", (e) => {
         this.angle = parseFloat(e.target.value);
+        this.targetAngle = this.angle; // Prevent damping from reverting slider changes
       });
     }
 
@@ -93,6 +94,7 @@ export class Camera {
     if (heightEl) {
       heightEl.addEventListener("input", (e) => {
         this.height = parseFloat(e.target.value);
+        this.targetHeight = this.height; // Prevent damping from reverting slider changes
       });
     }
 

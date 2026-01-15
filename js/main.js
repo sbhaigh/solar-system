@@ -369,6 +369,10 @@ window.addEventListener("load", function () {
   }
   const kuiperBuffer = gl.createBuffer();
 
+  // Pre-allocate belt position arrays (avoid GC pressure)
+  const asteroidPositions = new Float32Array(config.asteroidBelt.count * 3);
+  const kuiperPositions = new Float32Array(config.kuiperBelt.count * 3);
+
   // CME Particle system
   const cmeParticles = [];
   const maxParticles = 200;
@@ -1042,22 +1046,22 @@ window.addEventListener("load", function () {
     gl.uniform3fv(pointUniforms.color, config.asteroidBelt.color);
     gl.uniform1f(pointUniforms.pointSize, 2.0);
 
-    const asteroidPositions = [];
-    asteroidData.forEach((asteroid) => {
+    // Use pre-allocated buffer (no GC allocations)
+    for (let i = 0; i < config.asteroidBelt.count; i++) {
+      const asteroid = asteroidData[i];
       const orbitSpeed =
         config.asteroidBelt.orbitSpeed * Math.sqrt(125 / asteroid.radius);
       const currentAngle = asteroid.angle + accumulatedTime * orbitSpeed * 0.1;
       const x = asteroid.radius * Math.cos(currentAngle);
       const z = asteroid.radius * Math.sin(currentAngle);
-      asteroidPositions.push(x, asteroid.height, z);
-    });
+      const idx = i * 3;
+      asteroidPositions[idx] = x;
+      asteroidPositions[idx + 1] = asteroid.height;
+      asteroidPositions[idx + 2] = z;
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, asteroidBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array(asteroidPositions),
-      gl.DYNAMIC_DRAW
-    );
+    gl.bufferData(gl.ARRAY_BUFFER, asteroidPositions, gl.DYNAMIC_DRAW);
 
     gl.enableVertexAttribArray(pointAttribs.position);
     gl.vertexAttribPointer(pointAttribs.position, 3, gl.FLOAT, false, 0, 0);
@@ -1067,22 +1071,22 @@ window.addEventListener("load", function () {
     gl.uniform3fv(pointUniforms.color, config.kuiperBelt.color);
     gl.uniform1f(pointUniforms.pointSize, 2.5);
 
-    const kuiperPositions = [];
-    kuiperData.forEach((object) => {
+    // Use pre-allocated buffer (no GC allocations)
+    for (let i = 0; i < config.kuiperBelt.count; i++) {
+      const object = kuiperData[i];
       const orbitSpeed =
         config.kuiperBelt.orbitSpeed * Math.sqrt(1400 / object.radius);
       const currentAngle = object.angle + accumulatedTime * orbitSpeed * 0.1;
       const x = object.radius * Math.cos(currentAngle);
       const z = object.radius * Math.sin(currentAngle);
-      kuiperPositions.push(x, object.height, z);
-    });
+      const idx = i * 3;
+      kuiperPositions[idx] = x;
+      kuiperPositions[idx + 1] = object.height;
+      kuiperPositions[idx + 2] = z;
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, kuiperBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array(kuiperPositions),
-      gl.DYNAMIC_DRAW
-    );
+    gl.bufferData(gl.ARRAY_BUFFER, kuiperPositions, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(pointAttribs.position);
     gl.vertexAttribPointer(pointAttribs.position, 3, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.POINTS, 0, config.kuiperBelt.count);
