@@ -1037,60 +1037,51 @@ window.addEventListener("load", function () {
     // Switch back to main shader (matrices already set)
     gl.useProgram(shaderProgram);
 
-    const sunVisible = true;
-
     // Update Sun label
-    if (sunVisible) {
-      const sunScreenPos = project3DTo2D(
-        0,
-        0,
-        0,
-        viewMatrix,
-        projectionMatrix,
-        canvas
-      );
+    const sunScreenPos = project3DTo2D(
+      0,
+      0,
+      0,
+      viewMatrix,
+      projectionMatrix,
+      canvas
+    );
 
-      // Store sun position for click detection
-      planetScreenPositions.sun = sunScreenPos;
+    // Store sun position for click detection
+    planetScreenPositions.sun = sunScreenPos;
 
-      if (sunScreenPos.visible) {
-        sunLabel.style.display = "block";
-        sunLabel.style.left = sunScreenPos.x + "px";
-        sunLabel.style.top = sunScreenPos.y - 15 + "px";
-      } else {
-        sunLabel.style.display = "none";
-      }
+    if (sunScreenPos.visible) {
+      sunLabel.style.display = "block";
+      sunLabel.style.left = sunScreenPos.x + "px";
+      sunLabel.style.top = sunScreenPos.y - 15 + "px";
     } else {
       sunLabel.style.display = "none";
-      planetScreenPositions.sun = { visible: false };
     }
 
     // Render Sun
-    if (sunVisible) {
-      const sunRotationAngle = accumulatedTime * config.sun.rotationSpeed;
-      renderSphere(
-        gl,
-        shaderProgram,
-        mainUniforms,
-        mainAttribs,
-        sphereBuffers,
-        config.sun,
-        [0, 0, 0],
-        null,
-        null,
-        config.sun.axialTilt,
-        sunRotationAngle,
-        textures.sun,
-        null, // No clouds for Sun
-        0, // No cloud rotation
-        null, // No specular map for Sun
-        null, // No normal map for Sun
-        null, // No night map for Sun
-        null, // No planet shadow for Sun
-        null, // No planet radius for Sun
-        accumulatedTime // Time for sun spots
-      );
-    }
+    const sunRotationAngle = accumulatedTime * config.sun.rotationSpeed;
+    renderSphere(
+      gl,
+      shaderProgram,
+      mainUniforms,
+      mainAttribs,
+      sphereBuffers,
+      config.sun,
+      [0, 0, 0],
+      null,
+      null,
+      config.sun.axialTilt,
+      sunRotationAngle,
+      textures.sun,
+      null, // No clouds for Sun
+      0, // No cloud rotation
+      null, // No specular map for Sun
+      null, // No normal map for Sun
+      null, // No night map for Sun
+      null, // No planet shadow for Sun
+      null, // No planet radius for Sun
+      accumulatedTime // Time for sun spots
+    );
 
     // Render planets
     config.planets.forEach((planet, index) => {
@@ -1116,53 +1107,269 @@ window.addEventListener("load", function () {
         z = zFlat * cosInc;
       }
 
-      const planetVisible = true;
-
       // Update label position
-      if (planetVisible) {
-        const screenPos = project3DTo2D(
-          x,
-          y + planet.radius + 1,
-          z,
-          viewMatrix,
-          projectionMatrix,
-          canvas
-        );
+      const screenPos = project3DTo2D(
+        x,
+        y + planet.radius + 1,
+        z,
+        viewMatrix,
+        projectionMatrix,
+        canvas
+      );
 
-        // Store planet screen position for click detection
-        planetScreenPositions.planets[index] = {
-          x: screenPos.x,
-          y: screenPos.y,
-          visible: screenPos.visible,
-        };
+      // Store planet screen position for click detection
+      planetScreenPositions.planets[index] = {
+        x: screenPos.x,
+        y: screenPos.y,
+        visible: screenPos.visible,
+      };
 
-        const label = labelCache.planets[index];
-        if (screenPos.visible) {
-          label.style.display = "block";
-          label.style.left = screenPos.x + "px";
-          label.style.top = screenPos.y + "px";
-        } else {
-          label.style.display = "none";
-        }
+      const label = labelCache.planets[index];
+      if (screenPos.visible) {
+        label.style.display = "block";
+        label.style.left = screenPos.x + "px";
+        label.style.top = screenPos.y + "px";
       } else {
-        // Planet culled - hide label and skip position storage
-        const label = labelCache.planets[index];
         label.style.display = "none";
-        planetScreenPositions.planets[index] = { visible: false };
       }
 
-      // Only render planet if visible in frustum
-      if (planetVisible) {
-        // Calculate rotation angle first (needed for moon shadow calculation and rings)
-        const rotationAngle = planet.rotationSpeed
-          ? accumulatedTime * planet.rotationSpeed
-          : 0;
+      // Calculate rotation angle first (needed for moon shadow calculation and rings)
+      const rotationAngle = planet.rotationSpeed
+        ? accumulatedTime * planet.rotationSpeed
+        : 0;
 
-        // Calculate moon position for shadow
-        let moonPosition = null;
-        let moonRadius = null;
-        if (planet.moons && planet.moons.length > 0) {
-          const moon = planet.moons[0];
+      // Calculate moon position for shadow
+      let moonPosition = null;
+      let moonRadius = null;
+      if (planet.moons && planet.moons.length > 0) {
+        const moon = planet.moons[0];
+        const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
+
+        let moonX, moonY, moonZ;
+        if (moon.orbitalTilt !== undefined) {
+          // Moon has specific orbital tilt (e.g., Earth's Moon)
+          const tiltRad = (moon.orbitalTilt * Math.PI) / 180;
+          const baseX = moon.orbitRadius * Math.cos(moonAngle);
+          const baseY =
+            moon.orbitRadius * Math.sin(moonAngle) * Math.sin(tiltRad);
+          const baseZ =
+            moon.orbitRadius * Math.sin(moonAngle) * Math.cos(tiltRad);
+          moonX = x + baseX;
+          moonY = y + baseY;
+          moonZ = z + baseZ;
+        } else if (planet.axialTilt !== undefined) {
+          // Align moon orbit with planet's equatorial plane
+          // Use same transformation as rings (equatorial plane rotates with planet)
+          const tiltRad = (planet.axialTilt * Math.PI) / 180;
+          const cosTilt = Math.cos(tiltRad);
+          const sinTilt = Math.sin(tiltRad);
+          const cosRot = Math.cos(rotationAngle);
+          const sinRot = Math.sin(rotationAngle);
+
+          // Calculate position in orbital plane
+          const localX = moon.orbitRadius * Math.cos(moonAngle);
+          const localY = 0;
+          const localZ = moon.orbitRadius * Math.sin(moonAngle);
+
+          // Apply same transformation as rings
+          moonX = x + localX * cosRot + localZ * sinRot;
+          moonY =
+            y +
+            localX * sinRot * sinTilt +
+            localY * cosTilt -
+            localZ * cosRot * sinTilt;
+          moonZ =
+            z -
+            localX * sinRot * cosTilt +
+            localY * sinTilt +
+            localZ * cosRot * cosTilt;
+        } else {
+          // Default: orbit in horizontal plane
+          moonX = x + moon.orbitRadius * Math.cos(moonAngle);
+          moonY = y;
+          moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
+        }
+
+        moonPosition = [moonX, moonY, moonZ];
+        moonRadius = moon.radius;
+      }
+
+      const planetTexture = textures[planet.name] || null;
+      const cloudTexture =
+        planet.name === "Earth" ? textures.earthClouds : null;
+      // Clouds rotate slightly faster than Earth (about 1.2x speed)
+      const cloudRotation =
+        planet.name === "Earth"
+          ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
+          : 0;
+      const specularTexture =
+        planet.name === "Earth" ? textures.earthSpecular : null;
+      const normalTexture =
+        planet.name === "Earth" ? textures.earthNormal : null;
+      const nightTexture = planet.name === "Earth" ? textures.earthNight : null;
+      renderSphere(
+        gl,
+        shaderProgram,
+        mainUniforms,
+        mainAttribs,
+        sphereBuffers,
+        planet,
+        [x, y, z],
+        moonPosition,
+        moonRadius,
+        planet.axialTilt,
+        rotationAngle,
+        planetTexture,
+        cloudTexture,
+        cloudRotation,
+        specularTexture,
+        normalTexture,
+        nightTexture,
+        null, // No planet shadow for planets
+        null, // No planet radius for planets
+        accumulatedTime // Time for effects
+      );
+
+      // Render planetary spot (Great Red Spot)
+      if (planet.spot) {
+        const spot = planet.spot;
+        const latRad = (spot.latitude * Math.PI) / 180;
+        const lonRad =
+          ((spot.longitude + rotationAngle * 57.2958) * Math.PI) / 180;
+
+        const localX = Math.cos(latRad) * Math.cos(lonRad);
+        const localY = Math.sin(latRad);
+        const localZ = Math.cos(latRad) * Math.sin(lonRad);
+
+        const tangentLon = [-Math.sin(lonRad), 0, Math.cos(lonRad)];
+        const tangentLat = [
+          -Math.sin(latRad) * Math.cos(lonRad),
+          Math.cos(latRad),
+          -Math.sin(latRad) * Math.sin(lonRad),
+        ];
+
+        // Reuse matrix from pool
+        const modelMatrix = matrixPool.model;
+        for (let i = 0; i < 16; i++) modelMatrix[i] = i % 5 === 0 ? 1 : 0;
+        modelMatrix[12] = x;
+        modelMatrix[13] = y;
+        modelMatrix[14] = z;
+
+        if (planet.axialTilt !== undefined && rotationAngle !== undefined) {
+          const tiltRad = (planet.axialTilt * Math.PI) / 180;
+          const cosTilt = Math.cos(tiltRad);
+          const sinTilt = Math.sin(tiltRad);
+          const cosRot = Math.cos(rotationAngle);
+          const sinRot = Math.sin(rotationAngle);
+
+          const tempMatrix = matrixPool.temp;
+          for (let i = 0; i < 16; i++) tempMatrix[i] = i % 5 === 0 ? 1 : 0;
+          tempMatrix[0] = cosRot;
+          tempMatrix[2] = sinRot;
+          tempMatrix[4] = sinRot * sinTilt;
+          tempMatrix[5] = cosTilt;
+          tempMatrix[6] = -cosRot * sinTilt;
+          tempMatrix[8] = -sinRot * cosTilt;
+          tempMatrix[9] = sinTilt;
+          tempMatrix[10] = cosRot * cosTilt;
+
+          const combined = matrixPool.combined;
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              combined[i + j * 4] = 0;
+              for (let k = 0; k < 4; k++) {
+                combined[i + j * 4] +=
+                  modelMatrix[i + k * 4] * tempMatrix[k + j * 4];
+              }
+            }
+          }
+          for (let i = 0; i < 16; i++) modelMatrix[i] = combined[i];
+        }
+
+        const spotTranslate = matrixPool.spotTranslate;
+        for (let i = 0; i < 16; i++) spotTranslate[i] = i % 5 === 0 ? 1 : 0;
+        spotTranslate[12] = localX * planet.radius * 1.001;
+        spotTranslate[13] = localY * planet.radius * 1.001;
+        spotTranslate[14] = localZ * planet.radius * 1.001;
+
+        const withSpotPos = matrixPool.withSpotPos;
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            withSpotPos[i + j * 4] = 0;
+            for (let k = 0; k < 4; k++) {
+              withSpotPos[i + j * 4] +=
+                modelMatrix[i + k * 4] * spotTranslate[k + j * 4];
+            }
+          }
+        }
+
+        const orientMatrix = matrixPool.orientMatrix;
+        for (let i = 0; i < 16; i++) orientMatrix[i] = i % 5 === 0 ? 1 : 0;
+        orientMatrix[0] = tangentLon[0];
+        orientMatrix[1] = tangentLon[1];
+        orientMatrix[2] = tangentLon[2];
+        orientMatrix[4] = tangentLat[0];
+        orientMatrix[5] = tangentLat[1];
+        orientMatrix[6] = tangentLat[2];
+        orientMatrix[8] = localX;
+        orientMatrix[9] = localY;
+        orientMatrix[10] = localZ;
+
+        // Fix #4: Reuse pooled matrix instead of creating new one
+        const withOrientation = matrixPool.withOrientation;
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            withOrientation[i + j * 4] = 0;
+            for (let k = 0; k < 4; k++) {
+              withOrientation[i + j * 4] +=
+                withSpotPos[i + k * 4] * orientMatrix[k + j * 4];
+            }
+          }
+        }
+
+        mat4.scale(withOrientation, withOrientation, [
+          spot.width,
+          spot.height,
+          0.01,
+        ]);
+
+        gl.uniformMatrix4fv(mainUniforms.model, false, withOrientation);
+        gl.uniform3fv(mainUniforms.color, spot.color);
+        gl.uniform3fv(mainUniforms.lightPos, [0, 0, 0]);
+        gl.uniform1i(mainUniforms.emissive, false);
+        gl.uniform1i(mainUniforms.checkShadow, false);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
+        gl.enableVertexAttribArray(mainAttribs.position);
+        gl.vertexAttribPointer(mainAttribs.position, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.normal);
+        gl.enableVertexAttribArray(mainAttribs.normal);
+        gl.vertexAttribPointer(mainAttribs.normal, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
+        gl.drawElements(
+          gl.TRIANGLES,
+          sphereBuffers.indexCount,
+          gl.UNSIGNED_SHORT,
+          0
+        );
+      }
+
+      // Render moons
+      if (planet.moons) {
+        const distToPlanet = Math.sqrt(
+          (cameraX - x) * (cameraX - x) +
+            (cameraY - y) * (cameraY - y) +
+            (cameraZ - z) * (cameraZ - z)
+        );
+        // Only show moon labels when focused on this planet or very close to it
+        const isFocused =
+          camera.focusTarget === index ||
+          (cameraTransition.active && cameraTransition.targetFocus === index);
+        const showMoonLabels = isFocused || distToPlanet < 50;
+
+        planet.moons.forEach((moon, moonIndex) => {
           const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
 
           let moonX, moonY, moonZ;
@@ -1179,7 +1386,7 @@ window.addEventListener("load", function () {
             moonZ = z + baseZ;
           } else if (planet.axialTilt !== undefined) {
             // Align moon orbit with planet's equatorial plane
-            // Use same transformation as rings (equatorial plane rotates with planet)
+            // Use same transformation as rings to stay in same plane
             const tiltRad = (planet.axialTilt * Math.PI) / 180;
             const cosTilt = Math.cos(tiltRad);
             const sinTilt = Math.sin(tiltRad);
@@ -1191,18 +1398,20 @@ window.addEventListener("load", function () {
             const localY = 0;
             const localZ = moon.orbitRadius * Math.sin(moonAngle);
 
-            // Apply same transformation as rings
-            moonX = x + localX * cosRot + localZ * sinRot;
-            moonY =
-              y +
+            // Apply same transformation as rings (axial tilt + rotation)
+            const transformedX = localX * cosRot + localZ * sinRot;
+            const transformedY =
               localX * sinRot * sinTilt +
               localY * cosTilt -
               localZ * cosRot * sinTilt;
-            moonZ =
-              z -
-              localX * sinRot * cosTilt +
+            const transformedZ =
+              -localX * sinRot * cosTilt +
               localY * sinTilt +
               localZ * cosRot * cosTilt;
+
+            moonX = x + transformedX;
+            moonY = y + transformedY;
+            moonZ = z + transformedZ;
           } else {
             // Default: orbit in horizontal plane
             moonX = x + moon.orbitRadius * Math.cos(moonAngle);
@@ -1210,324 +1419,76 @@ window.addEventListener("load", function () {
             moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
           }
 
-          moonPosition = [moonX, moonY, moonZ];
-          moonRadius = moon.radius;
-        }
-
-        const planetTexture = textures[planet.name] || null;
-        const cloudTexture =
-          planet.name === "Earth" ? textures.earthClouds : null;
-        // Clouds rotate slightly faster than Earth (about 1.2x speed)
-        const cloudRotation =
-          planet.name === "Earth"
-            ? (accumulatedTime * planet.rotationSpeed * 1.2) / (Math.PI * 2)
-            : 0;
-        const specularTexture =
-          planet.name === "Earth" ? textures.earthSpecular : null;
-        const normalTexture =
-          planet.name === "Earth" ? textures.earthNormal : null;
-        const nightTexture =
-          planet.name === "Earth" ? textures.earthNight : null;
-        renderSphere(
-          gl,
-          shaderProgram,
-          mainUniforms,
-          mainAttribs,
-          sphereBuffers,
-          planet,
-          [x, y, z],
-          moonPosition,
-          moonRadius,
-          planet.axialTilt,
-          rotationAngle,
-          planetTexture,
-          cloudTexture,
-          cloudRotation,
-          specularTexture,
-          normalTexture,
-          nightTexture,
-          null, // No planet shadow for planets
-          null, // No planet radius for planets
-          accumulatedTime // Time for effects
-        );
-
-        // Render planetary spot (Great Red Spot)
-        if (planet.spot) {
-          const spot = planet.spot;
-          const latRad = (spot.latitude * Math.PI) / 180;
-          const lonRad =
-            ((spot.longitude + rotationAngle * 57.2958) * Math.PI) / 180;
-
-          const localX = Math.cos(latRad) * Math.cos(lonRad);
-          const localY = Math.sin(latRad);
-          const localZ = Math.cos(latRad) * Math.sin(lonRad);
-
-          const tangentLon = [-Math.sin(lonRad), 0, Math.cos(lonRad)];
-          const tangentLat = [
-            -Math.sin(latRad) * Math.cos(lonRad),
-            Math.cos(latRad),
-            -Math.sin(latRad) * Math.sin(lonRad),
-          ];
-
-          // Reuse matrix from pool
-          const modelMatrix = matrixPool.model;
-          for (let i = 0; i < 16; i++) modelMatrix[i] = i % 5 === 0 ? 1 : 0;
-          modelMatrix[12] = x;
-          modelMatrix[13] = y;
-          modelMatrix[14] = z;
-
-          if (planet.axialTilt !== undefined && rotationAngle !== undefined) {
-            const tiltRad = (planet.axialTilt * Math.PI) / 180;
-            const cosTilt = Math.cos(tiltRad);
-            const sinTilt = Math.sin(tiltRad);
-            const cosRot = Math.cos(rotationAngle);
-            const sinRot = Math.sin(rotationAngle);
-
-            const tempMatrix = matrixPool.temp;
-            for (let i = 0; i < 16; i++) tempMatrix[i] = i % 5 === 0 ? 1 : 0;
-            tempMatrix[0] = cosRot;
-            tempMatrix[2] = sinRot;
-            tempMatrix[4] = sinRot * sinTilt;
-            tempMatrix[5] = cosTilt;
-            tempMatrix[6] = -cosRot * sinTilt;
-            tempMatrix[8] = -sinRot * cosTilt;
-            tempMatrix[9] = sinTilt;
-            tempMatrix[10] = cosRot * cosTilt;
-
-            const combined = matrixPool.combined;
-            for (let i = 0; i < 4; i++) {
-              for (let j = 0; j < 4; j++) {
-                combined[i + j * 4] = 0;
-                for (let k = 0; k < 4; k++) {
-                  combined[i + j * 4] +=
-                    modelMatrix[i + k * 4] * tempMatrix[k + j * 4];
-                }
-              }
-            }
-            for (let i = 0; i < 16; i++) modelMatrix[i] = combined[i];
+          const moonScreenPos = project3DTo2D(
+            moonX,
+            moonY + moon.radius + 0.5,
+            moonZ,
+            viewMatrix,
+            projectionMatrix,
+            canvas
+          );
+          const moonLabel = labelCache.moons[index][moonIndex];
+          if (moonScreenPos.visible && showMoonLabels) {
+            moonLabel.style.display = "block";
+            moonLabel.style.left = moonScreenPos.x + "px";
+            moonLabel.style.top = moonScreenPos.y + "px";
+          } else {
+            moonLabel.style.display = "none";
           }
 
-          const spotTranslate = matrixPool.spotTranslate;
-          for (let i = 0; i < 16; i++) spotTranslate[i] = i % 5 === 0 ? 1 : 0;
-          spotTranslate[12] = localX * planet.radius * 1.001;
-          spotTranslate[13] = localY * planet.radius * 1.001;
-          spotTranslate[14] = localZ * planet.radius * 1.001;
+          // Render moon
+          const moonTexture = textures[moon.name] || null;
 
-          const withSpotPos = matrixPool.withSpotPos;
-          for (let i = 0; i < 4; i++) {
-            for (let j = 0; j < 4; j++) {
-              withSpotPos[i + j * 4] = 0;
-              for (let k = 0; k < 4; k++) {
-                withSpotPos[i + j * 4] +=
-                  modelMatrix[i + k * 4] * spotTranslate[k + j * 4];
-              }
-            }
-          }
+          // Calculate tidal locking rotation - same face always toward planet
+          // The rotation angle should match the orbital angle so the moon "shows"
+          // the same face to its planet (like Earth's Moon)
+          const tidalLockRotation = moonAngle + Math.PI / 2; // Add 90° to align texture properly
 
-          const orientMatrix = matrixPool.orientMatrix;
-          for (let i = 0; i < 16; i++) orientMatrix[i] = i % 5 === 0 ? 1 : 0;
-          orientMatrix[0] = tangentLon[0];
-          orientMatrix[1] = tangentLon[1];
-          orientMatrix[2] = tangentLon[2];
-          orientMatrix[4] = tangentLat[0];
-          orientMatrix[5] = tangentLat[1];
-          orientMatrix[6] = tangentLat[2];
-          orientMatrix[8] = localX;
-          orientMatrix[9] = localY;
-          orientMatrix[10] = localZ;
-
-          // Fix #4: Reuse pooled matrix instead of creating new one
-          const withOrientation = matrixPool.withOrientation;
-          for (let i = 0; i < 4; i++) {
-            for (let j = 0; j < 4; j++) {
-              withOrientation[i + j * 4] = 0;
-              for (let k = 0; k < 4; k++) {
-                withOrientation[i + j * 4] +=
-                  withSpotPos[i + k * 4] * orientMatrix[k + j * 4];
-              }
-            }
-          }
-
-          mat4.scale(withOrientation, withOrientation, [
-            spot.width,
-            spot.height,
-            0.01,
-          ]);
-
-          gl.uniformMatrix4fv(mainUniforms.model, false, withOrientation);
-          gl.uniform3fv(mainUniforms.color, spot.color);
-          gl.uniform3fv(mainUniforms.lightPos, [0, 0, 0]);
-          gl.uniform1i(mainUniforms.emissive, false);
-          gl.uniform1i(mainUniforms.checkShadow, false);
-
-          gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.position);
-          gl.enableVertexAttribArray(mainAttribs.position);
-          gl.vertexAttribPointer(
-            mainAttribs.position,
-            3,
-            gl.FLOAT,
-            false,
-            0,
-            0
+          renderSphere(
+            gl,
+            shaderProgram,
+            mainUniforms,
+            mainAttribs,
+            sphereBuffers,
+            moon,
+            [moonX, moonY, moonZ],
+            null,
+            null,
+            0, // No axial tilt for moons (for simplicity)
+            tidalLockRotation,
+            moonTexture,
+            null, // No clouds for moons
+            0, // No cloud rotation
+            null, // No specular map for moons
+            null, // No normal map for moons
+            null, // No night map for moons
+            [x, y, z], // Planet position for shadow casting (lunar eclipse)
+            planet.radius, // Planet radius for shadow
+            accumulatedTime // Time for effects
           );
+        });
+      }
 
-          gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.normal);
-          gl.enableVertexAttribArray(mainAttribs.normal);
-          gl.vertexAttribPointer(mainAttribs.normal, 3, gl.FLOAT, false, 0, 0);
-
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.indices);
-          gl.drawElements(
-            gl.TRIANGLES,
-            sphereBuffers.indexCount,
-            gl.UNSIGNED_SHORT,
-            0
+      // Render rings
+      if (planet.hasRings && planet.rings) {
+        const ringTexture =
+          planet.name === "Saturn" ? textures.saturnRing : null;
+        const cachedRingBuffers = ringBuffersCache.get(index);
+        planet.rings.forEach((ring, ringIndex) => {
+          renderRing(
+            gl,
+            shaderProgram,
+            mainUniforms,
+            mainAttribs,
+            ring,
+            [x, y, z],
+            planet.axialTilt,
+            rotationAngle,
+            ringTexture,
+            cachedRingBuffers[ringIndex]
           );
-        }
-
-        // Render moons
-        if (planet.moons) {
-          const distToPlanet = Math.sqrt(
-            (cameraX - x) * (cameraX - x) +
-              (cameraY - y) * (cameraY - y) +
-              (cameraZ - z) * (cameraZ - z)
-          );
-          // Only show moon labels when focused on this planet or very close to it
-          const isFocused =
-            camera.focusTarget === index ||
-            (cameraTransition.active && cameraTransition.targetFocus === index);
-          const showMoonLabels = isFocused || distToPlanet < 50;
-
-          planet.moons.forEach((moon, moonIndex) => {
-            const moonAngle = accumulatedTime * moon.orbitSpeed * 0.1;
-
-            let moonX, moonY, moonZ;
-            if (moon.orbitalTilt !== undefined) {
-              // Moon has specific orbital tilt (e.g., Earth's Moon)
-              const tiltRad = (moon.orbitalTilt * Math.PI) / 180;
-              const baseX = moon.orbitRadius * Math.cos(moonAngle);
-              const baseY =
-                moon.orbitRadius * Math.sin(moonAngle) * Math.sin(tiltRad);
-              const baseZ =
-                moon.orbitRadius * Math.sin(moonAngle) * Math.cos(tiltRad);
-              moonX = x + baseX;
-              moonY = y + baseY;
-              moonZ = z + baseZ;
-            } else if (planet.axialTilt !== undefined) {
-              // Align moon orbit with planet's equatorial plane
-              // Use same transformation as rings to stay in same plane
-              const tiltRad = (planet.axialTilt * Math.PI) / 180;
-              const cosTilt = Math.cos(tiltRad);
-              const sinTilt = Math.sin(tiltRad);
-              const cosRot = Math.cos(rotationAngle);
-              const sinRot = Math.sin(rotationAngle);
-
-              // Calculate position in orbital plane
-              const localX = moon.orbitRadius * Math.cos(moonAngle);
-              const localY = 0;
-              const localZ = moon.orbitRadius * Math.sin(moonAngle);
-
-              // Apply same transformation as rings (axial tilt + rotation)
-              const transformedX = localX * cosRot + localZ * sinRot;
-              const transformedY =
-                localX * sinRot * sinTilt +
-                localY * cosTilt -
-                localZ * cosRot * sinTilt;
-              const transformedZ =
-                -localX * sinRot * cosTilt +
-                localY * sinTilt +
-                localZ * cosRot * cosTilt;
-
-              moonX = x + transformedX;
-              moonY = y + transformedY;
-              moonZ = z + transformedZ;
-            } else {
-              // Default: orbit in horizontal plane
-              moonX = x + moon.orbitRadius * Math.cos(moonAngle);
-              moonY = y;
-              moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
-            }
-
-            const moonVisible = true;
-
-            const moonScreenPos = moonVisible
-              ? project3DTo2D(
-                  moonX,
-                  moonY + moon.radius + 0.5,
-                  moonZ,
-                  viewMatrix,
-                  projectionMatrix,
-                  canvas
-                )
-              : { visible: false };
-            const moonLabel = labelCache.moons[index][moonIndex];
-            if (moonVisible) {
-              if (moonScreenPos.visible && showMoonLabels) {
-                moonLabel.style.display = "block";
-                moonLabel.style.left = moonScreenPos.x + "px";
-                moonLabel.style.top = moonScreenPos.y + "px";
-              } else {
-                moonLabel.style.display = "none";
-              }
-            } else {
-              moonLabel.style.display = "none";
-            }
-
-            // Only render moon if visible
-            if (moonVisible) {
-              const moonTexture = textures[moon.name] || null;
-
-              // Calculate tidal locking rotation - same face always toward planet
-              // The rotation angle should match the orbital angle so the moon "shows"
-              // the same face to its planet (like Earth's Moon)
-              const tidalLockRotation = moonAngle + Math.PI / 2; // Add 90° to align texture properly
-
-              renderSphere(
-                gl,
-                shaderProgram,
-                mainUniforms,
-                mainAttribs,
-                sphereBuffers,
-                moon,
-                [moonX, moonY, moonZ],
-                null,
-                null,
-                0, // No axial tilt for moons (for simplicity)
-                tidalLockRotation,
-                moonTexture,
-                null, // No clouds for moons
-                0, // No cloud rotation
-                null, // No specular map for moons
-                null, // No normal map for moons
-                null, // No night map for moons
-                [x, y, z], // Planet position for shadow casting (lunar eclipse)
-                planet.radius, // Planet radius for shadow
-                accumulatedTime // Time for effects
-              );
-            } // End moonVisible check
-          });
-        }
-
-        // Render rings
-        if (planet.hasRings && planet.rings) {
-          const ringTexture =
-            planet.name === "Saturn" ? textures.saturnRing : null;
-          const cachedRingBuffers = ringBuffersCache.get(index);
-          planet.rings.forEach((ring, ringIndex) => {
-            renderRing(
-              gl,
-              shaderProgram,
-              mainUniforms,
-              mainAttribs,
-              ring,
-              [x, y, z],
-              planet.axialTilt,
-              rotationAngle,
-              ringTexture,
-              cachedRingBuffers[ringIndex]
-            );
-          });
-        }
-      } // End planetVisible check
+        });
+      }
     });
 
     // Update and render CME particles
