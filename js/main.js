@@ -82,68 +82,6 @@ function validateURLParams(urlParams) {
   return validated;
 }
 
-/**
- * Extracts frustum planes from view-projection matrix
- * @param {Float32Array} vp - Combined view-projection matrix
- * @returns {Array<Array<number>>} Array of 6 planes [left, right, bottom, top, near, far]
- */
-function extractFrustumPlanes(vp) {
-  const planes = [];
-
-  // Left plane: vp[3] + vp[0], vp[7] + vp[4], vp[11] + vp[8], vp[15] + vp[12]
-  planes.push([vp[3] + vp[0], vp[7] + vp[4], vp[11] + vp[8], vp[15] + vp[12]]);
-
-  // Right plane: vp[3] - vp[0], vp[7] - vp[4], vp[11] - vp[8], vp[15] - vp[12]
-  planes.push([vp[3] - vp[0], vp[7] - vp[4], vp[11] - vp[8], vp[15] - vp[12]]);
-
-  // Bottom plane: vp[3] + vp[1], vp[7] + vp[5], vp[11] + vp[9], vp[15] + vp[13]
-  planes.push([vp[3] + vp[1], vp[7] + vp[5], vp[11] + vp[9], vp[15] + vp[13]]);
-
-  // Top plane: vp[3] - vp[1], vp[7] - vp[5], vp[11] - vp[9], vp[15] - vp[13]
-  planes.push([vp[3] - vp[1], vp[7] - vp[5], vp[11] - vp[9], vp[15] - vp[13]]);
-
-  // Near plane: vp[3] + vp[2], vp[7] + vp[6], vp[11] + vp[10], vp[15] + vp[14]
-  planes.push([vp[3] + vp[2], vp[7] + vp[6], vp[11] + vp[10], vp[15] + vp[14]]);
-
-  // Far plane: vp[3] - vp[2], vp[7] - vp[6], vp[11] - vp[10], vp[15] - vp[14]
-  planes.push([vp[3] - vp[2], vp[7] - vp[6], vp[11] - vp[10], vp[15] - vp[14]]);
-
-  // Normalize planes
-  for (let i = 0; i < 6; i++) {
-    const len = Math.sqrt(
-      planes[i][0] * planes[i][0] +
-        planes[i][1] * planes[i][1] +
-        planes[i][2] * planes[i][2]
-    );
-    planes[i][0] /= len;
-    planes[i][1] /= len;
-    planes[i][2] /= len;
-    planes[i][3] /= len;
-  }
-
-  return planes;
-}
-
-/**
- * Tests if a sphere is inside or intersecting the frustum
- * @param {Array<Array<number>>} planes - Frustum planes
- * @param {number} x - Sphere center X
- * @param {number} y - Sphere center Y
- * @param {number} z - Sphere center Z
- * @param {number} radius - Sphere radius
- * @returns {boolean} True if sphere is visible
- */
-function isSphereInFrustum(planes, x, y, z, radius) {
-  for (let i = 0; i < 6; i++) {
-    const dist =
-      planes[i][0] * x + planes[i][1] * y + planes[i][2] * z + planes[i][3];
-    if (dist < -radius) {
-      return false; // Sphere is completely outside this plane
-    }
-  }
-  return true; // Sphere is inside or intersecting frustum
-}
-
 // Initialize WebGL and start application
 window.addEventListener("load", function () {
   const canvas = document.getElementById("webgl-canvas");
@@ -558,6 +496,21 @@ window.addEventListener("load", function () {
     }
   });
 
+  // Cache label DOM references to avoid repeated getElementById calls
+  const labelCache = {
+    sun: sunLabel,
+    planets: config.planets.map((planet, index) =>
+      document.getElementById(`label-planet-${index}`)
+    ),
+    moons: config.planets.map((planet, pIndex) =>
+      planet.moons
+        ? planet.moons.map((moon, mIndex) =>
+            document.getElementById(`label-moon-${pIndex}-${mIndex}`)
+          )
+        : []
+    ),
+  };
+
   /**
    * Converts exponential zoom value to linear slider position
    * @param {number} zoomValue - Camera zoom distance (1-3000)
@@ -677,7 +630,10 @@ window.addEventListener("load", function () {
   }
 
   // Planet click tracking
-  const planetScreenPositions = [];
+  const planetScreenPositions = {
+    sun: null,
+    planets: new Array(config.planets.length),
+  };
 
   // Camera transition state
   let cameraTransition = {
@@ -1019,19 +975,6 @@ window.addEventListener("load", function () {
 
     gl.uniformMatrix4fv(mainUniforms.view, false, viewMatrix);
 
-    // Calculate view-projection matrix for frustum culling
-    const vpMatrix = new Float32Array(16);
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
-        vpMatrix[i + j * 4] = 0;
-        for (let k = 0; k < 4; k++) {
-          vpMatrix[i + j * 4] +=
-            viewMatrix[i + k * 4] * projectionMatrix[k + j * 4];
-        }
-      }
-    }
-    const frustumPlanes = extractFrustumPlanes(vpMatrix);
-
     // Render orbit paths
     if (camera.showOrbits) {
       orbitBuffers.forEach((orbitBuffer) => {
@@ -1094,8 +1037,7 @@ window.addEventListener("load", function () {
     // Switch back to main shader (matrices already set)
     gl.useProgram(shaderProgram);
 
-    // Frustum culling for sun (temporarily disabled)
-    const sunVisible = true; // isSphereInFrustum(frustumPlanes, 0, 0, 0, config.sun.radius);
+    const sunVisible = true;
 
     // Update Sun label
     if (sunVisible) {
@@ -1151,7 +1093,6 @@ window.addEventListener("load", function () {
     }
 
     // Render planets
-    planetScreenPositions.planets = [];
     config.planets.forEach((planet, index) => {
       const startAngleRad = ((planet.startAngle || 0) * Math.PI) / 180;
       const angle = accumulatedTime * planet.orbitSpeed * 0.1 + startAngleRad;
@@ -1175,8 +1116,7 @@ window.addEventListener("load", function () {
         z = zFlat * cosInc;
       }
 
-      // Frustum culling for planet (temporarily disabled)
-      const planetVisible = true; // isSphereInFrustum(frustumPlanes, x, y, z, planet.radius * 20);
+      const planetVisible = true;
 
       // Update label position
       if (planetVisible) {
@@ -1196,7 +1136,7 @@ window.addEventListener("load", function () {
           visible: screenPos.visible,
         };
 
-        const label = document.getElementById(`label-planet-${index}`);
+        const label = labelCache.planets[index];
         if (screenPos.visible) {
           label.style.display = "block";
           label.style.left = screenPos.x + "px";
@@ -1206,7 +1146,7 @@ window.addEventListener("load", function () {
         }
       } else {
         // Planet culled - hide label and skip position storage
-        const label = document.getElementById(`label-planet-${index}`);
+        const label = labelCache.planets[index];
         label.style.display = "none";
         planetScreenPositions.planets[index] = { visible: false };
       }
@@ -1507,8 +1447,7 @@ window.addEventListener("load", function () {
               moonZ = z + moon.orbitRadius * Math.sin(moonAngle);
             }
 
-            // Frustum culling for moon (temporarily disabled)
-            const moonVisible = true; // isSphereInFrustum(frustumPlanes, moonX, moonY, moonZ, moon.radius);
+            const moonVisible = true;
 
             const moonScreenPos = moonVisible
               ? project3DTo2D(
@@ -1520,9 +1459,7 @@ window.addEventListener("load", function () {
                   canvas
                 )
               : { visible: false };
-            const moonLabel = document.getElementById(
-              `label-moon-${index}-${moonIndex}`
-            );
+            const moonLabel = labelCache.moons[index][moonIndex];
             if (moonVisible) {
               if (moonScreenPos.visible && showMoonLabels) {
                 moonLabel.style.display = "block";

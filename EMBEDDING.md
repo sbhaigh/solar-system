@@ -140,16 +140,6 @@ To use the regular (non-embed) version:
 ></iframe>
 ```
 
-## GitHub Pages Setup
-
-1. Go to your repository Settings
-2. Navigate to Pages (left sidebar)
-3. Under "Source", select `main` branch
-4. Click Save
-5. Your site will be available at `https://yourusername.github.io/repository-name/`
-
-Replace `yourusername` and `repository-name` in the examples above with your actual GitHub username and repository name.
-
 ## Browser Compatibility
 
 - Chrome/Edge: Full support
